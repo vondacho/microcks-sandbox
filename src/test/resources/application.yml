@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:petshop-test;DB_CLOSE_DELAY=-1
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    defer-datasource-initialization: true
+    # Restated from the main application.yml: this file shadows it entirely
+    # (classpath:/application.yml resolves to test-classes first), so anything
+    # the tests should share with production has to be repeated here.
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Never contacted: the JwtDecoder is replaced by a test double.
+          issuer-uri: http://localhost:8081/realms/petshop

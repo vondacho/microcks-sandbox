@@ -1,0 +1,282 @@
+###############################################################################
+# Pet Shop API — scratch file
+#
+# Every /api/** call needs an OIDC access token, so run the token request in
+# section 2 first: its response handler stores the token in a global variable
+# that the later requests reuse via {{access_token}}.
+#
+# Prerequisites:
+#   docker compose up -d      # Keycloak on :8081
+#   ./mvnw spring-boot:run    # API on :8080
+#
+# Variables come from http-client.env.json — pick the "dev" environment.
+# IntelliJ IDEA / VS Code (REST Client): click "Send Request" above a block.
+###############################################################################
+
+
+###############################################################################
+# 1. Who is the provider?
+###############################################################################
+
+### Discovery document — the contract the API validates tokens against
+GET {{issuer}}/.well-known/openid-configuration
+Accept: application/json
+
+> {%
+    client.test("discovery is reachable", function () {
+        client.assert(response.status === 200,
+            "Keycloak not up? got " + response.status);
+    });
+    client.log("token endpoint: " + response.body.token_endpoint);
+    client.log("jwks:           " + response.body.jwks_uri);
+%}
+
+### What the API itself advertises (RFC 9728, sent in the 401 WWW-Authenticate header)
+GET {{host}}/.well-known/oauth-protected-resource
+Accept: application/json
+
+
+###############################################################################
+# 2. Get an access token
+###############################################################################
+
+### Client credentials — full access (pets:read + pets:write). Run this first.
+# %20 is the encoded space separating the two scopes.
+POST {{issuer}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id={{client_id}}&client_secret={{client_secret}}&scope=pets:read%20pets:write
+
+> {%
+    client.test("token issued", function () {
+        client.assert(response.status === 200, "got " + response.status);
+        client.assert(response.body.access_token !== undefined, "no access_token");
+    });
+    client.global.set("access_token", response.body.access_token);
+    client.log("scopes: " + response.body.scope);
+    client.log("expires in " + response.body.expires_in + "s");
+%}
+
+### Client credentials — read only. Stored separately to prove scopes are enforced.
+POST {{issuer}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id={{client_id}}&client_secret={{client_secret}}&scope=pets:read
+
+> {%
+    client.global.set("readonly_token", response.body.access_token);
+    client.log("scopes: " + response.body.scope);
+%}
+
+### Password grant as alice (realm role shop-admin) — a token for a human, not a service
+POST {{issuer}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id={{client_id}}&client_secret={{client_secret}}&username=alice&password=alice&scope=pets:read%20pets:write
+
+> {%
+    client.global.set("alice_token", response.body.access_token);
+%}
+
+### Password grant as bob (realm role shop-staff)
+POST {{issuer}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id={{client_id}}&client_secret={{client_secret}}&username=bob&password=bob&scope=pets:read
+
+> {%
+    client.global.set("bob_token", response.body.access_token);
+%}
+
+
+###############################################################################
+# 3. The token is genuinely required
+###############################################################################
+
+### No token at all -> 401, with a WWW-Authenticate challenge
+GET {{host}}/api/pets
+
+> {%
+    client.test("anonymous is rejected", function () {
+        client.assert(response.status === 401, "expected 401, got " + response.status);
+    });
+    client.log("WWW-Authenticate: " + response.headers.valueOf("WWW-Authenticate"));
+%}
+
+### A token the provider never signed -> 401
+GET {{host}}/api/pets
+Authorization: Bearer not-a-real-token
+
+> {%
+    client.test("forged token is rejected", function () {
+        client.assert(response.status === 401, "expected 401, got " + response.status);
+    });
+%}
+
+### Valid token, but missing pets:write -> 403 (authenticated, not authorized)
+POST {{host}}/api/pets
+Authorization: Bearer {{readonly_token}}
+Content-Type: application/json
+
+{
+  "name": "Bella",
+  "category": "DOG",
+  "status": "AVAILABLE",
+  "price": 399.99
+}
+
+> {%
+    client.test("read-only scope cannot write", function () {
+        client.assert(response.status === 403, "expected 403, got " + response.status);
+    });
+%}
+
+
+###############################################################################
+# 4. Public endpoints — no token needed
+###############################################################################
+
+### Health probe
+GET {{host}}/actuator/health
+
+### OpenAPI contract (importable into Microcks)
+GET {{host}}/v3/api-docs
+Accept: application/json
+
+
+###############################################################################
+# 5. The pet inventory
+###############################################################################
+
+### List every pet
+GET {{host}}/api/pets
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("read scope grants access", function () {
+        client.assert(response.status === 200, "expected 200, got " + response.status);
+    });
+    client.log(response.body.length + " pets in stock");
+%}
+
+### List only what is for sale
+GET {{host}}/api/pets?status=AVAILABLE
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+### Add a pet — needs pets:write. Captures the new id for the calls below.
+POST {{host}}/api/pets
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Bella",
+  "category": "DOG",
+  "status": "AVAILABLE",
+  "price": 399.99
+}
+
+> {%
+    client.test("pet created", function () {
+        client.assert(response.status === 201, "expected 201, got " + response.status);
+    });
+    client.global.set("pet_id", response.body.id);
+    client.log("Location: " + response.headers.valueOf("Location"));
+%}
+
+### Fetch the pet we just created
+GET {{host}}/api/pets/{{pet_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+### Sell it — full replace
+PUT {{host}}/api/pets/{{pet_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Bella",
+  "category": "DOG",
+  "status": "SOLD",
+  "price": 420.00
+}
+
+> {%
+    client.test("status updated", function () {
+        client.assert(response.body.status === "SOLD", "got " + response.body.status);
+    });
+%}
+
+### Remove it
+DELETE {{host}}/api/pets/{{pet_id}}
+Authorization: Bearer {{access_token}}
+
+> {%
+    client.test("deleted", function () {
+        client.assert(response.status === 204, "expected 204, got " + response.status);
+    });
+%}
+
+### It is gone -> 404 as an RFC 9457 problem detail
+GET {{host}}/api/pets/{{pet_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("gone", function () {
+        client.assert(response.status === 404, "expected 404, got " + response.status);
+    });
+%}
+
+
+###############################################################################
+# 6. Input validation (runs before any business logic)
+###############################################################################
+
+### Blank name and a negative price -> 400
+POST {{host}}/api/pets
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "category": "DOG",
+  "status": "AVAILABLE",
+  "price": -1
+}
+
+> {%
+    client.test("invalid payload rejected", function () {
+        client.assert(response.status === 400, "expected 400, got " + response.status);
+    });
+%}
+
+### An unknown status value -> 400
+POST {{host}}/api/pets
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Ghost",
+  "category": "CAT",
+  "status": "ADOPTED",
+  "price": 10.00
+}
+
+> {%
+    client.test("unknown enum rejected", function () {
+        client.assert(response.status === 400, "expected 400, got " + response.status);
+    });
+%}
+
+### An unknown status in the query string is rejected the same way -> 400
+GET {{host}}/api/pets?status=NOPE
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("unknown filter rejected", function () {
+        client.assert(response.status === 400, "expected 400, got " + response.status);
+    });
+%}

@@ -1,0 +1,125 @@
+{
+  "realm": "petshop",
+  "enabled": true,
+  "accessTokenLifespan": 900,
+  "clientScopes": [
+    {
+      "name": "pets:read",
+      "description": "Read the pet inventory",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "pets:write",
+      "description": "Create, update and delete pets",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "shop-admin",
+        "description": "Full control over the inventory"
+      },
+      {
+        "name": "shop-staff",
+        "description": "Read-only access to the inventory"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Keeper",
+      "email": "alice@petshop.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "shop-admin"
+      ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Browser",
+      "email": "bob@petshop.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "shop-staff"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "petshop-service",
+      "name": "Pet shop machine-to-machine client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "petshop-service-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "pets:read",
+        "pets:write"
+      ]
+    },
+    {
+      "clientId": "petshop-swagger",
+      "name": "Swagger UI (public, PKCE)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:8080/swagger-ui/oauth2-redirect.html",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "pets:read",
+        "pets:write"
+      ]
+    }
+  ]
+}

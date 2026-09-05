@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: petshop-api
+
+  datasource:
+    url: jdbc:h2:mem:petshop;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    # Let Hibernate create the schema before data.sql runs.
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Discovery document is read from <issuer-uri>/.well-known/openid-configuration.
+          # Override with PETSHOP_ISSUER_URI for a different provider (Auth0, Entra ID, Okta...).
+          issuer-uri: ${PETSHOP_ISSUER_URI:http://localhost:8081/realms/petshop}
+          # Uncomment to reject tokens minted for a different API:
+          # audiences: petshop-api
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    oauth:
+      client-id: petshop-swagger
+      use-pkce-with-authorization-code-grant: true
+
+logging:
+  level:
+    org.springframework.security: INFO
