@@ -129,7 +129,7 @@ Two tiers, split by filename so the fast one never needs a container runtime.
 
 ```bash
 ./mvnw test      # 12 unit/slice tests  — no Docker, ~10s
-./mvnw verify    # + 10 end-to-end tests — real Keycloak in a container, ~70s
+./mvnw verify    # + 11 end-to-end tests — real Keycloak in a container, ~2min
 ```
 
 **`*Test` (surefire).** `JwtDecoderTestConfig` swaps in a `JwtDecoder` double, so tokens are handed
@@ -150,6 +150,32 @@ a token is required     anonymous 401 · forged 401 · tampered signature 401 ·
 scopes are enforced     read-only cannot POST 403 · write-only cannot GET 403 · password grant 200
 inventory lifecycle     create 201 → read 200 → replace 200 → filter → delete 204 → 404 · invalid 400
 the API documentation   /swagger-ui.html renders, without a token
+```
+
+**Contract conformance (`PetShopConformanceIT`).** The inverse of the above: instead of tests
+stating what the API should do, Microcks acts as the *client*, replaying every example in
+`openapi-examples.json` against the live API and validating each response against the contract's
+schema for that status code. Nothing is asserted by hand — the contract is the specification, so a
+drift between code and published contract fails the build with no one having written an assertion
+about it.
+
+Because every operation is protected, Microcks cannot replay a single example without credentials.
+A token is minted from Keycloak on the host and handed to Microcks as a **Secret**, which Microcks
+attaches to each replayed request:
+
+```java
+microcks.createSecret(new Secret.Builder()
+        .name("petshop-oidc-token")
+        .tokenHeader("Authorization")
+        .token("Bearer " + KeycloakSupport.clientCredentialsToken(keycloak, SCOPE_READ, SCOPE_WRITE))
+        .build());
+
+TestResult result = microcks.testEndpoint(new TestRequest.Builder()
+        .serviceId("Pet Shop API:v1")
+        .runnerType(TestRunnerType.OPEN_API_SCHEMA.name())
+        .testEndpoint("http://host.testcontainers.internal:" + APP_PORT)
+        .secretName("petshop-oidc-token")
+        .build());
 ```
 
 Any Docker-compatible runtime works — Docker Desktop, Rancher Desktop, Colima, Podman. Testcontainers

@@ -22,6 +22,7 @@
     <springdoc.version>3.1.0</springdoc.version>
     <!-- Not managed by the Spring Boot BOM. Testcontainers is (testcontainers-bom). -->
     <rest-assured.version>6.0.1</rest-assured.version>
+    <microcks-testcontainers.version>0.5.0</microcks-testcontainers.version>
     <keycloak.image>quay.io/keycloak/keycloak:26.4</keycloak.image>
   </properties>
 
@@ -90,6 +91,13 @@
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Microcks as a contract-test client: replays the contract's examples at the live API. -->
+    <dependency>
+      <groupId>io.github.microcks</groupId>
+      <artifactId>microcks-testcontainers</artifactId>
+      <version>${microcks-testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

@@ -1,6 +1,5 @@
 package com.example.petshop.e2e;
 
-import static com.example.petshop.e2e.KeycloakSupport.KEYCLOAK;
 import static com.example.petshop.e2e.KeycloakSupport.SCOPE_READ;
 import static com.example.petshop.e2e.KeycloakSupport.SCOPE_WRITE;
 import static com.example.petshop.e2e.KeycloakSupport.clientCredentialsToken;
@@ -22,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -36,7 +36,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class PetShopE2EIT {
 
-    @Container static final org.testcontainers.containers.GenericContainer<?> keycloak = KEYCLOAK;
+    /**
+     * {@code @Testcontainers} + {@code @Container} hand the lifecycle to JUnit: Keycloak is started
+     * before the first test of this class and stopped after the last one. The extension runs ahead
+     * of Spring's, so the container already has a mapped port by the time {@link #oidcIssuer} is
+     * asked for the issuer URI.
+     */
+    @Container static final GenericContainer<?> keycloak = KeycloakSupport.newContainer();
 
     private static final String PET =
             """
@@ -52,7 +58,7 @@ class PetShopE2EIT {
     static void oidcIssuer(DynamicPropertyRegistry registry) {
         registry.add(
                 "spring.security.oauth2.resourceserver.jwt.issuer-uri",
-                KeycloakSupport::issuerUri);
+                () -> KeycloakSupport.issuerUri(keycloak));
     }
 
     @BeforeEach
@@ -91,7 +97,7 @@ class PetShopE2EIT {
         @Test
         @DisplayName("a syntactically valid JWT with a bogus signature -> 401")
         void tamperedTokenIsRejected() {
-            String token = clientCredentialsToken(SCOPE_READ);
+            String token = clientCredentialsToken(keycloak, SCOPE_READ);
             String tampered = token.substring(0, token.lastIndexOf('.') + 1) + "AAAAdeadbeef";
 
             given().auth().oauth2(tampered).when().get().then().statusCode(401);
@@ -100,7 +106,7 @@ class PetShopE2EIT {
         @Test
         @DisplayName("a genuine Keycloak token is accepted")
         void genuineTokenIsAccepted() {
-            String token = clientCredentialsToken(SCOPE_READ);
+            String token = clientCredentialsToken(keycloak, SCOPE_READ);
             assertThat(token).isNotBlank();
 
             given().auth().oauth2(token).when().get().then().statusCode(200);
@@ -115,7 +121,7 @@ class PetShopE2EIT {
         @DisplayName("pets:read alone cannot create -> 403")
         void readScopeCannotWrite() {
             given().auth()
-                    .oauth2(clientCredentialsToken(SCOPE_READ))
+                    .oauth2(clientCredentialsToken(keycloak, SCOPE_READ))
                     .contentType(ContentType.JSON)
                     .body(PET)
                     .when()
@@ -128,7 +134,7 @@ class PetShopE2EIT {
         @DisplayName("pets:write alone cannot read -> 403")
         void writeScopeCannotRead() {
             given().auth()
-                    .oauth2(clientCredentialsToken(SCOPE_WRITE))
+                    .oauth2(clientCredentialsToken(keycloak, SCOPE_WRITE))
                     .when()
                     .get()
                     .then()
@@ -139,7 +145,7 @@ class PetShopE2EIT {
         @DisplayName("a human token (password grant) works the same way")
         void passwordGrantTokenIsAccepted() {
             given().auth()
-                    .oauth2(passwordToken("alice", "alice", SCOPE_READ))
+                    .oauth2(passwordToken(keycloak, "alice", "alice", SCOPE_READ))
                     .when()
                     .get()
                     .then()
@@ -154,7 +160,7 @@ class PetShopE2EIT {
         @Test
         @DisplayName("create, read, replace, delete")
         void fullLifecycle() {
-            String token = clientCredentialsToken(SCOPE_READ, SCOPE_WRITE);
+            String token = clientCredentialsToken(keycloak, SCOPE_READ, SCOPE_WRITE);
 
             int id =
                     given().auth()
@@ -216,7 +222,7 @@ class PetShopE2EIT {
         @DisplayName("an invalid payload is rejected before it reaches the database")
         void invalidPayloadIsRejected() {
             given().auth()
-                    .oauth2(clientCredentialsToken(SCOPE_WRITE))
+                    .oauth2(clientCredentialsToken(keycloak, SCOPE_WRITE))
                     .contentType(ContentType.JSON)
                     .body("""
                             {"name":"","category":"DOG","status":"AVAILABLE","price":-1}
