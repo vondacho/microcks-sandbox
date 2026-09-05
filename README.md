@@ -129,7 +129,7 @@ Two tiers, split by filename so the fast one never needs a container runtime.
 
 ```bash
 ./mvnw test      # 12 unit/slice tests  — no Docker, ~10s
-./mvnw verify    # + 11 end-to-end tests — real Keycloak in a container, ~2min
+./mvnw verify    # + 12 end-to-end tests — real Keycloak in a container, ~2.5min
 ```
 
 **`*Test` (surefire).** `JwtDecoderTestConfig` swaps in a `JwtDecoder` double, so tokens are handed
@@ -178,6 +178,64 @@ TestResult result = microcks.testEndpoint(new TestRequest.Builder()
         .build());
 ```
 
+**Behaviour conformance (`PetShopBehaviorConformanceIT`).** The schema runner above validates a
+response against the JSON Schema declared for its status code, and never against the response body
+the example declares. So `sell_bella` — `PUT /api/pets/5` with `status: SOLD` — passes it as long as
+*some* well-formed pet comes back: a service that quietly dropped the sale and answered `AVAILABLE`
+is still "conformant". Delete the `setStatus` line from `PetService.replace` and see for yourself —
+`PetShopConformanceIT` stays green on all five operations.
+
+`petshop-behavior-collection.json` closes that gap. It is imported as a **secondary** artifact onto
+the service the contract already defines, contributing no examples of its own — only one test script
+per operation, matched to the operation by the request's method and path. The `POSTMAN` runner then
+replays the very same examples and runs that script against each live response, so the claims are
+about what the answers *say*:
+
+```js
+tests["PUT /api/pets/5 (sell_bella): the sale took effect, the pet is now SOLD"] =
+    (body.status === "SOLD");
+tests["PUT /api/pets/5 (sell_bella): the pet keeps the identity it was addressed by"] =
+    (body.id === 5);
+```
+
+An assertion's name is its failure message, so the report reads as the claim that stopped holding:
+
+```
+GET /api/pets                            OK
+POST /api/pets                           OK
+GET /api/pets/{id}                       OK
+PUT /api/pets/{id}                       FAILED
+    example 'sell_bella': PUT /api/pets/5 (sell_bella): the sale took effect, the pet is now SOLD
+DELETE /api/pets/{id}                    OK
+```
+
+Running those scripts needs the `microcks-postman-runtime` sidecar, hence an ensemble rather than a
+lone container:
+
+```java
+new MicrocksContainersEnsemble("quay.io/microcks/microcks-uber:latest")
+        .withMainArtifacts("openapi-examples.json")
+        .withSecondaryArtifacts("petshop-behavior-collection.json")
+        .withPostman();
+```
+
+Three details of the runner, none of them obvious from the outside:
+
+- One script serves **every** example of its operation, so each script branches — on the status code
+  for `POST` (201 for `new_pet_bella`, 400 for `invalid_pet`), on the id for the `{id}` operations.
+- Microcks injects query parameters as globals, but **a global set by one example survives into the
+  next**: `all_pets` sends no `status` and would still read the value `sold_pets` left behind. The
+  filter is read from the URL actually called instead.
+- The Postman runner never consults a Microcks **Secret** — it builds its requests from the
+  operation's headers and the test's own. `Authorization` goes in as a *global operations header*,
+  next to the `Content-Type: application/json` that the runtime would otherwise default to
+  `text/plain`, which the API would answer with 415 on `POST` and `PUT`.
+
+What this still is not: Microcks replays operations independently, with no ordering between them and
+no way to carry a value out of one response and into the next request. Sequences — create, then
+fetch what was created; delete, then confirm it is gone — stay in `PetShopE2EIT`, and the scripts
+here are written so that no assertion depends on the order operations happen to run in.
+
 Any Docker-compatible runtime works — Docker Desktop, Rancher Desktop, Colima, Podman. Testcontainers
 finds the socket via `~/.testcontainers.properties` or `DOCKER_HOST`; on Podman you usually also want
 `TESTCONTAINERS_RYUK_DISABLED=true`.
@@ -200,7 +258,14 @@ src/test/java/com/example/petshop/
 ├── config/         JwtAuthoritiesConverterTest
 ├── support/        JwtDecoderTestConfig      (mocked decoder for *Test)
 ├── web/            PetApiSecurityTest, PetApiCrudTest
-└── e2e/            PetShopE2EIT, KeycloakSupport   (real Keycloak, *IT)
+└── e2e/            KeycloakSupport                 (real Keycloak, *IT)
+                    PetShopE2EIT                    hand-written end-to-end
+                    PetShopConformanceIT            contract conformance, via Microcks
+                    PetShopBehaviorConformanceIT    behaviour conformance, via Microcks
+
+src/test/resources/
+├── application.yml
+└── petshop-behavior-collection.json   # Postman scripts: one per operation
 
 src/main/resources/
 ├── application.yml
