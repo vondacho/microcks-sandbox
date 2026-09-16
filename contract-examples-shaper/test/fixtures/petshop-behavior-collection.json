@@ -1,0 +1,264 @@
+{
+  "info": {
+    "_postman_id": "5d0b3a1e-petshop-behaviour-conformance",
+    "name": "Pet Shop API",
+    "description": "version=v1 - Behaviour conformance for the Pet Shop API. Secondary artifact: it adds no examples of its own, only one test script per operation, run by Microcks against the examples declared in openapi-examples.json. Operations are matched by method and path, so the URLs below must stay in step with the contract.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET /api/pets",
+      "request": {
+        "url": "http://localhost:8080/api/pets",
+        "method": "GET",
+        "header": [],
+        "body": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// One script serves every example of the operation, so it has to work out which",
+              "// one it is running against. Microcks injects query parameters as globals, but a",
+              "// global set by one example survives into the next: all_pets sends no status and",
+              "// would still read the value sold_pets left behind. The URL actually called is",
+              "// the one reading of \"was this call filtered?\" that cannot be contaminated.",
+              "var url = (typeof request !== \"undefined\" && request.url) ? String(request.url) : \"\";",
+              "tests[\"GET /api/pets: the replayed URL is readable\"] = (url.length > 0);",
+              "",
+              "var match = /[?&]status=([A-Z]+)/.exec(url);",
+              "var filter = match ? match[1] : null;",
+              "var pets = JSON.parse(responseBody);",
+              "",
+              "tests[\"GET /api/pets: answers 200\"] = (responseCode.code === 200);",
+              "tests[\"GET /api/pets: the body is a JSON array\"] = Array.isArray(pets);",
+              "",
+              "var byId = {};",
+              "var wellFormed = true;",
+              "for (var i = 0; i < pets.length; i++) {",
+              "    var p = pets[i];",
+              "    byId[p.id] = p;",
+              "    wellFormed = wellFormed",
+              "        && typeof p.id === \"number\" && p.id > 0",
+              "        && typeof p.name === \"string\" && p.name.length > 0",
+              "        && typeof p.category === \"string\" && p.category.length > 0",
+              "        && [\"AVAILABLE\", \"PENDING\", \"SOLD\"].indexOf(p.status) !== -1",
+              "        && typeof p.price === \"number\" && p.price >= 0;",
+              "}",
+              "",
+              "tests[\"GET /api/pets: every listed pet is complete and well formed\"] = wellFormed;",
+              "tests[\"GET /api/pets: no pet is listed twice\"] = (Object.keys(byId).length === pets.length);",
+              "",
+              "if (filter === null) {",
+              "    // all_pets. Other examples add a pet and sell one, and the order in which",
+              "    // Microcks replays operations is not specified, so only the pets that no",
+              "    // example touches can be asserted on: 1..4.",
+              "    tests[\"GET /api/pets (all_pets): the whole inventory is listed, pets 1 to 4 included\"] =",
+              "        (byId[1] !== undefined && byId[2] !== undefined",
+              "            && byId[3] !== undefined && byId[4] !== undefined);",
+              "    tests[\"GET /api/pets (all_pets): pet 1 is Rex, an AVAILABLE dog at 450\"] =",
+              "        (byId[1] !== undefined && byId[1].name === \"Rex\" && byId[1].category === \"DOG\"",
+              "            && byId[1].status === \"AVAILABLE\" && byId[1].price === 450);",
+              "} else {",
+              "    // available_pets and sold_pets. Soundness: nothing off-filter comes back.",
+              "    var onlyMatching = true;",
+              "    for (var j = 0; j < pets.length; j++) {",
+              "        onlyMatching = onlyMatching && (pets[j].status === filter);",
+              "    }",
+              "    tests[\"GET /api/pets?status=\" + filter + \": every pet returned has that status\"] = onlyMatching;",
+              "",
+              "    // Completeness: an empty answer satisfies the clause above, so name the",
+              "    // pets the filter is required to have kept, and the ones it must have dropped.",
+              "    if (filter === \"AVAILABLE\") {",
+              "        tests[\"GET /api/pets?status=AVAILABLE: keeps the available pets 1 and 2\"] =",
+              "            (byId[1] !== undefined && byId[2] !== undefined);",
+              "        tests[\"GET /api/pets?status=AVAILABLE: drops the PENDING pet 3 and the SOLD pet 4\"] =",
+              "            (byId[3] === undefined && byId[4] === undefined);",
+              "    } else if (filter === \"SOLD\") {",
+              "        tests[\"GET /api/pets?status=SOLD: keeps the sold pet 4\"] = (byId[4] !== undefined);",
+              "        tests[\"GET /api/pets?status=SOLD: drops the unsold pets 1, 2 and 3\"] =",
+              "            (byId[1] === undefined && byId[2] === undefined && byId[3] === undefined);",
+              "    } else {",
+              "        tests[\"GET /api/pets: the only status examples are AVAILABLE and SOLD, got \" + filter] = false;",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /api/pets",
+      "request": {
+        "url": "http://localhost:8080/api/pets",
+        "method": "POST",
+        "header": [],
+        "body": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var body = JSON.parse(responseBody);",
+              "",
+              "if (responseCode.code === 201) {",
+              "    // new_pet_bella: what was submitted must come back stored, unaltered.",
+              "    tests[\"POST /api/pets (new_pet_bella): stores the submitted name\"] = (body.name === \"Bella\");",
+              "    tests[\"POST /api/pets (new_pet_bella): stores the submitted category\"] = (body.category === \"DOG\");",
+              "    tests[\"POST /api/pets (new_pet_bella): stores the submitted status\"] = (body.status === \"AVAILABLE\");",
+              "    tests[\"POST /api/pets (new_pet_bella): stores the submitted price, to the cent\"] = (body.price === 399.99);",
+              "    tests[\"POST /api/pets (new_pet_bella): assigns a generated id\"] =",
+              "        (typeof body.id === \"number\" && body.id > 0);",
+              "",
+              "    // The header and the body must agree on which pet was created.",
+              "    var location = (typeof postman !== \"undefined\" && postman.getResponseHeader)",
+              "        ? postman.getResponseHeader(\"Location\")",
+              "        : responseHeaders[\"Location\"];",
+              "    tests[\"POST /api/pets (new_pet_bella): Location points at the pet in the body\"] =",
+              "        (location === \"/api/pets/\" + body.id);",
+              "} else if (responseCode.code === 400) {",
+              "    // invalid_pet: a blank name and a negative price must be refused outright.",
+              "    tests[\"POST /api/pets (invalid_pet): the error body reports status 400\"] = (body.status === 400);",
+              "    tests[\"POST /api/pets (invalid_pet): the error body names the rejected path\"] =",
+              "        (body.path === \"/api/pets\");",
+              "    tests[\"POST /api/pets (invalid_pet): nothing was created, so no id comes back\"] =",
+              "        (body.id === undefined);",
+              "} else {",
+              "    tests[\"POST /api/pets: answers 201 for a valid pet and 400 for an invalid one, got \"",
+              "        + responseCode.code] = false;",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /api/pets/{id}",
+      "request": {
+        "url": "http://localhost:8080/api/pets/{id}",
+        "method": "GET",
+        "header": [],
+        "body": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var id = globals[\"id\"];",
+              "var body = JSON.parse(responseBody);",
+              "",
+              "if (id === \"999\") {",
+              "    tests[\"GET /api/pets/999 (unknown_pet): answers 404\"] = (responseCode.code === 404);",
+              "    tests[\"GET /api/pets/999 (unknown_pet): the problem is titled 'Pet not found'\"] =",
+              "        (body.title === \"Pet not found\");",
+              "    tests[\"GET /api/pets/999 (unknown_pet): the problem carries status 404\"] = (body.status === 404);",
+              "    tests[\"GET /api/pets/999 (unknown_pet): the detail names the id that was missing\"] =",
+              "        (typeof body.detail === \"string\" && body.detail.indexOf(\"999\") !== -1);",
+              "    tests[\"GET /api/pets/999 (unknown_pet): the instance is the path that was asked for\"] =",
+              "        (body.instance === \"/api/pets/999\");",
+              "} else if (id === \"1\") {",
+              "    tests[\"GET /api/pets/1 (rex): answers 200\"] = (responseCode.code === 200);",
+              "    tests[\"GET /api/pets/1 (rex): answers with the pet that was asked for\"] = (body.id === 1);",
+              "    tests[\"GET /api/pets/1 (rex): Rex is an AVAILABLE dog priced at 450\"] =",
+              "        (body.name === \"Rex\" && body.category === \"DOG\"",
+              "            && body.status === \"AVAILABLE\" && body.price === 450);",
+              "} else {",
+              "    tests[\"GET /api/pets/{id}: the contract declares ids 1 and 999 only, got \" + id] = false;",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT /api/pets/{id}",
+      "request": {
+        "url": "http://localhost:8080/api/pets/{id}",
+        "method": "PUT",
+        "header": [],
+        "body": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var id = globals[\"id\"];",
+              "var body = JSON.parse(responseBody);",
+              "",
+              "if (id === \"999\") {",
+              "    tests[\"PUT /api/pets/999 (unknown_pet): a valid body aimed at a missing pet is a 404\"] =",
+              "        (responseCode.code === 404);",
+              "    tests[\"PUT /api/pets/999 (unknown_pet): the problem is titled 'Pet not found'\"] =",
+              "        (body.title === \"Pet not found\");",
+              "    tests[\"PUT /api/pets/999 (unknown_pet): the problem carries status 404\"] = (body.status === 404);",
+              "    tests[\"PUT /api/pets/999 (unknown_pet): the instance is the path that was asked for\"] =",
+              "        (body.instance === \"/api/pets/999\");",
+              "    tests[\"PUT /api/pets/999 (unknown_pet): nothing was created along the way\"] =",
+              "        (body.id === undefined);",
+              "} else if (id === \"5\") {",
+              "    // sell_bella. This is the assertion schema conformance cannot make: the",
+              "    // response is a valid pet either way, but only one of them is the right pet.",
+              "    tests[\"PUT /api/pets/5 (sell_bella): answers 200\"] = (responseCode.code === 200);",
+              "    tests[\"PUT /api/pets/5 (sell_bella): the pet keeps the identity it was addressed by\"] =",
+              "        (body.id === 5);",
+              "    tests[\"PUT /api/pets/5 (sell_bella): the sale took effect, the pet is now SOLD\"] =",
+              "        (body.status === \"SOLD\");",
+              "    tests[\"PUT /api/pets/5 (sell_bella): the pet is sold at the submitted price of 420\"] =",
+              "        (body.price === 420);",
+              "    tests[\"PUT /api/pets/5 (sell_bella): name and category are the ones submitted\"] =",
+              "        (body.name === \"Bella\" && body.category === \"DOG\");",
+              "} else {",
+              "    tests[\"PUT /api/pets/{id}: the contract declares ids 5 and 999 only, got \" + id] = false;",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE /api/pets/{id}",
+      "request": {
+        "url": "http://localhost:8080/api/pets/{id}",
+        "method": "DELETE",
+        "header": [],
+        "body": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var id = globals[\"id\"];",
+              "",
+              "if (id === \"999\") {",
+              "    var body = JSON.parse(responseBody);",
+              "    // Deleting what is not there must be reported, not absorbed into a silent 204.",
+              "    tests[\"DELETE /api/pets/999 (unknown_pet): answers 404 rather than a silent success\"] =",
+              "        (responseCode.code === 404);",
+              "    tests[\"DELETE /api/pets/999 (unknown_pet): the problem is titled 'Pet not found'\"] =",
+              "        (body.title === \"Pet not found\");",
+              "    tests[\"DELETE /api/pets/999 (unknown_pet): the problem carries status 404\"] =",
+              "        (body.status === 404);",
+              "    tests[\"DELETE /api/pets/999 (unknown_pet): the detail names the id that was missing\"] =",
+              "        (typeof body.detail === \"string\" && body.detail.indexOf(\"999\") !== -1);",
+              "    tests[\"DELETE /api/pets/999 (unknown_pet): the instance is the path that was asked for\"] =",
+              "        (body.instance === \"/api/pets/999\");",
+              "} else {",
+              "    tests[\"DELETE /api/pets/{id}: the contract declares id 999 only, got \" + id] = false;",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

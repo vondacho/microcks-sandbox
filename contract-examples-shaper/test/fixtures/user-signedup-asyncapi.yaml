@@ -1,0 +1,28 @@
+asyncapi: '2.6.0'
+info:
+  title: User signed-up API
+  version: 0.1.1
+channels:
+  user/signedup:
+    subscribe:
+      message:
+        $ref: '#/components/messages/UserSignedUp'
+  user/welcomed:
+    publish:
+      message:
+        $ref: '#/components/messages/UserSignedUp'
+components:
+  messages:
+    UserSignedUp:
+      payload:
+        type: object
+        properties:
+          displayName:
+            type: string
+      examples:
+        - name: laurent
+          payload:
+            displayName: Laurent Broudoux
+        - name: john
+          payload:
+            displayName: John Doe

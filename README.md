@@ -154,7 +154,7 @@ the API documentation   /swagger-ui.html renders, without a token
 
 **Contract conformance (`PetShopConformanceIT`).** The inverse of the above: instead of tests
 stating what the API should do, Microcks acts as the *client*, replaying every example in
-`openapi-examples.json` against the live API and validating each response against the contract's
+`openapi-including-examples.json` against the live API and validating each response against the contract's
 schema for that status code. Nothing is asserted by hand — the contract is the specification, so a
 drift between code and published contract fails the build with no one having written an assertion
 about it.
@@ -272,4 +272,6 @@ src/main/resources/
 ├── data.sql                  # seed inventory
 ├── petshop-api.http          # scratch file: tokens + every endpoint
 └── http-client.env.json      # {{host}}, {{issuer}}, client credentials
+
+contract-examples-shaper/     # Astro UI: load and unload contracts and examples in Microcks (own README)
 ```

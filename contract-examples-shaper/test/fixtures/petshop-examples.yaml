@@ -1,0 +1,52 @@
+apiVersion: mocks.microcks.io/v1alpha1
+kind: APIExamples
+metadata:
+  name: Pet Shop API
+  version: v1
+operations:
+  'GET /api/pets/{id}':
+    luna:
+      request:
+        parameters:
+          id: 7
+      response:
+        status: '200'
+        mediaType: application/json
+        body:
+          id: 7
+          name: Luna
+          category: CAT
+          status: AVAILABLE
+          price: 150.0
+    milo:
+      request:
+        parameters:
+          id: 8
+      response:
+        status: '200'
+        mediaType: application/json
+        body:
+          id: 8
+          name: Milo
+          category: CAT
+          status: PENDING
+          price: 180.0
+  'PUT /api/pets/{id}':
+    reserve_luna:
+      request:
+        parameters:
+          id: 7
+        body:
+          name: Luna
+          category: CAT
+          status: PENDING
+          price: 150.0
+      response:
+        status: '200'
+        mediaType: application/json
+        body:
+          id: 7
+          name: Luna
+          category: CAT
+          status: PENDING
+          price: 150.0

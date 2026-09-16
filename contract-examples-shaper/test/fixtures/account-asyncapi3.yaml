@@ -1,0 +1,29 @@
+asyncapi: 3.0.0
+info:
+  title: Account Service
+  version: 1.0.0
+channels:
+  userSignedUp:
+    address: user/signedup
+    messages:
+      UserSignedUp:
+        $ref: '#/components/messages/UserSignedUp'
+operations:
+  sendUserSignedUp:
+    action: send
+    channel:
+      $ref: '#/channels/userSignedUp'
+    messages:
+      - $ref: '#/channels/userSignedUp/messages/UserSignedUp'
+components:
+  messages:
+    UserSignedUp:
+      payload:
+        type: object
+      examples:
+        - name: alice
+          payload:
+            email: alice@example.com
+        - name: bob
+          payload:
+            email: bob@example.com

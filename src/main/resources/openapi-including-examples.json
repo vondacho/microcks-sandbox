@@ -1,0 +1,718 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pet Shop API",
+    "description": "Pet shop inventory. Every endpoint requires an OIDC access token.\n\nThis is the example-bearing companion to `openapi.json`. Every request and response example below was captured from the running service, and each one is registered in the `examples` (plural) map so that a name shared between a parameter, a request body and a response identifies one complete exchange.",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Pets",
+      "description": "Pet shop inventory"
+    }
+  ],
+  "paths": {
+    "/api/pets": {
+      "get": {
+        "tags": [
+          "Pets"
+        ],
+        "operationId": "list",
+        "summary": "List the inventory, optionally filtered by status",
+        "security": [
+          {
+            "oidc": [
+              "pets:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AVAILABLE",
+                "PENDING",
+                "SOLD"
+              ]
+            },
+            "examples": {
+              "available_pets": {
+                "summary": "Only pets still for sale",
+                "value": "AVAILABLE"
+              },
+              "sold_pets": {
+                "summary": "Only pets already sold",
+                "value": "SOLD"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching pets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PetResponse"
+                  }
+                },
+                "examples": {
+                  "all_pets": {
+                    "summary": "The whole inventory, unfiltered",
+                    "value": [
+                      {
+                        "id": 1,
+                        "name": "Rex",
+                        "category": "DOG",
+                        "status": "AVAILABLE",
+                        "price": 450.0
+                      },
+                      {
+                        "id": 2,
+                        "name": "Whiskers",
+                        "category": "CAT",
+                        "status": "AVAILABLE",
+                        "price": 220.0
+                      },
+                      {
+                        "id": 3,
+                        "name": "Nemo",
+                        "category": "FISH",
+                        "status": "PENDING",
+                        "price": 35.5
+                      },
+                      {
+                        "id": 4,
+                        "name": "Kiwi",
+                        "category": "BIRD",
+                        "status": "SOLD",
+                        "price": 120.0
+                      }
+                    ]
+                  },
+                  "available_pets": {
+                    "summary": "Filtered to status=AVAILABLE",
+                    "value": [
+                      {
+                        "id": 1,
+                        "name": "Rex",
+                        "category": "DOG",
+                        "status": "AVAILABLE",
+                        "price": 450.0
+                      },
+                      {
+                        "id": 2,
+                        "name": "Whiskers",
+                        "category": "CAT",
+                        "status": "AVAILABLE",
+                        "price": 220.0
+                      }
+                    ]
+                  },
+                  "sold_pets": {
+                    "summary": "Filtered to status=SOLD",
+                    "value": [
+                      {
+                        "id": 4,
+                        "name": "Kiwi",
+                        "category": "BIRD",
+                        "status": "SOLD",
+                        "price": 120.0
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No access token, or a token that failed validation. Empty body."
+          },
+          "403": {
+            "description": "Token lacks the pets:read scope. Empty body."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pets"
+        ],
+        "operationId": "create",
+        "summary": "Add a pet to the inventory",
+        "security": [
+          {
+            "oidc": [
+              "pets:write"
+            ]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PetRequest"
+              },
+              "examples": {
+                "new_pet_bella": {
+                  "summary": "A well-formed new pet",
+                  "value": {
+                    "name": "Bella",
+                    "category": "DOG",
+                    "status": "AVAILABLE",
+                    "price": 399.99
+                  }
+                },
+                "invalid_pet": {
+                  "summary": "Blank name and a negative price",
+                  "value": {
+                    "name": "",
+                    "category": "DOG",
+                    "status": "AVAILABLE",
+                    "price": -1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created. `Location` points at the new pet.",
+            "headers": {
+              "Location": {
+                "description": "URI of the created pet.",
+                "schema": {
+                  "type": "string"
+                },
+                "examples": {
+                  "new_pet_bella": {
+                    "summary": "Location of the new pet",
+                    "value": "/api/pets/5"
+                  }
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetResponse"
+                },
+                "examples": {
+                  "new_pet_bella": {
+                    "summary": "The stored pet, with its generated id",
+                    "value": {
+                      "id": 5,
+                      "name": "Bella",
+                      "category": "DOG",
+                      "status": "AVAILABLE",
+                      "price": 399.99
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bean validation rejected the payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Spring Boot's default error body, used for request-binding failures.",
+                  "properties": {
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "invalid_pet": {
+                    "summary": "name must not be blank; price must be >= 0",
+                    "value": {
+                      "timestamp": "2026-09-05T07:27:27.011Z",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "path": "/api/pets"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No access token, or a token that failed validation. Empty body."
+          },
+          "403": {
+            "description": "Token lacks the pets:write scope. Empty body."
+          }
+        }
+      }
+    },
+    "/api/pets/{id}": {
+      "get": {
+        "tags": [
+          "Pets"
+        ],
+        "operationId": "get",
+        "summary": "Fetch a single pet",
+        "security": [
+          {
+            "oidc": [
+              "pets:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "examples": {
+              "rex": {
+                "summary": "A seeded pet",
+                "value": 1
+              },
+              "unknown_pet": {
+                "summary": "An id that is not in stock",
+                "value": 999
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The pet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetResponse"
+                },
+                "examples": {
+                  "rex": {
+                    "summary": "Rex, a dog that is available",
+                    "value": {
+                      "id": 1,
+                      "name": "Rex",
+                      "category": "DOG",
+                      "status": "AVAILABLE",
+                      "price": 450.0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pet with that id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "description": "RFC 9457 problem detail.",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "unknown_pet": {
+                    "summary": "RFC 9457 problem detail",
+                    "value": {
+                      "detail": "Pet 999 does not exist",
+                      "instance": "/api/pets/999",
+                      "status": 404,
+                      "title": "Pet not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No access token, or a token that failed validation. Empty body."
+          },
+          "403": {
+            "description": "Token lacks the pets:read scope. Empty body."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Pets"
+        ],
+        "operationId": "replace",
+        "summary": "Replace a pet in full",
+        "security": [
+          {
+            "oidc": [
+              "pets:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "examples": {
+              "sell_bella": {
+                "summary": "The pet being sold",
+                "value": 5
+              },
+              "unknown_pet": {
+                "summary": "An id that is not in stock",
+                "value": 999
+              }
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PetRequest"
+              },
+              "examples": {
+                "sell_bella": {
+                  "summary": "Mark Bella as sold, at the final price",
+                  "value": {
+                    "name": "Bella",
+                    "category": "DOG",
+                    "status": "SOLD",
+                    "price": 420.0
+                  }
+                },
+                "unknown_pet": {
+                  "summary": "A valid body aimed at a missing pet",
+                  "value": {
+                    "name": "Bella",
+                    "category": "DOG",
+                    "status": "SOLD",
+                    "price": 420.0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The pet after replacement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetResponse"
+                },
+                "examples": {
+                  "sell_bella": {
+                    "summary": "Bella, now SOLD at 420.00",
+                    "value": {
+                      "id": 5,
+                      "name": "Bella",
+                      "category": "DOG",
+                      "status": "SOLD",
+                      "price": 420.0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pet with that id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "description": "RFC 9457 problem detail.",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "unknown_pet": {
+                    "summary": "RFC 9457 problem detail",
+                    "value": {
+                      "detail": "Pet 999 does not exist",
+                      "instance": "/api/pets/999",
+                      "status": 404,
+                      "title": "Pet not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No access token, or a token that failed validation. Empty body."
+          },
+          "403": {
+            "description": "Token lacks the pets:write scope. Empty body."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Pets"
+        ],
+        "operationId": "delete",
+        "summary": "Remove a pet from the inventory",
+        "security": [
+          {
+            "oidc": [
+              "pets:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "examples": {
+              "unknown_pet": {
+                "summary": "An id that is not in stock",
+                "value": 999
+              }
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted. The body is empty, so there is no `examples` entry to pair with - which is also why no successful-delete example is declared on the id parameter."
+          },
+          "404": {
+            "description": "No pet with that id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "description": "RFC 9457 problem detail.",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "unknown_pet": {
+                    "summary": "RFC 9457 problem detail",
+                    "value": {
+                      "detail": "Pet 999 does not exist",
+                      "instance": "/api/pets/999",
+                      "status": 404,
+                      "title": "Pet not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No access token, or a token that failed validation. Empty body."
+          },
+          "403": {
+            "description": "Token lacks the pets:write scope. Empty body."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PetRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "PENDING",
+              "SOLD"
+            ]
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0.0
+          }
+        },
+        "required": [
+          "category",
+          "name",
+          "price",
+          "status"
+        ]
+      },
+      "PetResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "PENDING",
+              "SOLD"
+            ]
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "description": "RFC 9457 problem detail.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Spring Boot's default error body, used for request-binding failures.",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "oidc": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "http://localhost:8081/realms/petshop/protocol/openid-connect/auth",
+            "tokenUrl": "http://localhost:8081/realms/petshop/protocol/openid-connect/token",
+            "scopes": {
+              "pets:read": "Read the pet inventory",
+              "pets:write": "Create, update and delete pets"
+            }
+          }
+        }
+      }
+    }
+  }
+}
