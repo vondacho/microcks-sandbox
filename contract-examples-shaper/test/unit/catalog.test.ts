@@ -17,9 +17,9 @@ describe('buildCatalog', () => {
 
   it('orders a contract files for import: contract, companions, then metadata', () => {
     const petshop = catalog.contracts.find((c) => c.id === 'Pet Shop API:v1')!;
-    expect(petshop.primary?.file.name).toBe('openapi-examples.json');
+    expect(petshop.primary?.file.name).toBe('openapi-including-examples.json');
     expect(petshop.files.map((f) => [f.file.name, f.role])).toEqual([
-      ['openapi-examples.json', 'primary'],
+      ['openapi-including-examples.json', 'primary'],
       ['petshop-behavior-collection.json', 'secondary'],
       ['petshop-examples.yaml', 'secondary'],
       ['petshop-metadata.yaml', 'secondary'],
@@ -31,8 +31,8 @@ describe('buildCatalog', () => {
     const petshop = catalog.contracts.find((c) => c.id === 'Pet Shop API:v1')!;
     const byId = petshop.operations.find((o) => o.name === 'GET /api/pets/{id}')!;
     expect(byId.examples.map((e) => `${e.example}@${e.path}`)).toEqual([
-      'rex@fixtures/openapi-examples.json',
-      'unknown_pet@fixtures/openapi-examples.json',
+      'rex@fixtures/openapi-including-examples.json',
+      'unknown_pet@fixtures/openapi-including-examples.json',
       'luna@fixtures/petshop-examples.yaml',
       'milo@fixtures/petshop-examples.yaml',
     ]);

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5d0b3a1e-petshop-behaviour-conformance",
     "name": "Pet Shop API",
-    "description": "version=v1 - Behaviour conformance for the Pet Shop API. Secondary artifact: it adds no examples of its own, only one test script per operation, run by Microcks against the examples declared in openapi-examples.json. Operations are matched by method and path, so the URLs below must stay in step with the contract.",
+    "description": "version=v1 - Behaviour conformance for the Pet Shop API. Secondary artifact: it adds no examples of its own, only one test script per operation, run by Microcks against the examples declared in openapi-including-examples.json. Operations are matched by method and path, so the URLs below must stay in step with the contract.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

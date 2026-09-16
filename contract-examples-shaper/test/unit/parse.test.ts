@@ -5,7 +5,7 @@ import { fixture } from './support';
 
 describe('detectKind mirrors Microcks type detection', () => {
   it.each([
-    ['openapi-examples.json', 'openapi'],
+    ['openapi-including-examples.json', 'openapi'],
     ['petshop-behavior-collection.json', 'postman'],
     ['petshop-examples.yaml', 'apiexamples'],
     ['petshop-metadata.yaml', 'apimetadata'],
@@ -26,7 +26,7 @@ describe('detectKind mirrors Microcks type detection', () => {
 
 describe('parseArtifact', () => {
   it('names OpenAPI examples by operation, from response examples only', () => {
-    const a = parseArtifact(fixture('openapi-examples.json'))!;
+    const a = parseArtifact(fixture('openapi-including-examples.json'))!;
     expect(a).toMatchObject({ kind: 'openapi', role: 'primary', format: 'json', granular: true });
     expect(a.service).toEqual({ name: 'Pet Shop API', version: 'v1' });
     // As Microcks 1.14 reports them for this very file: DELETE's 204 has no content, hence no 'delete_bella'.

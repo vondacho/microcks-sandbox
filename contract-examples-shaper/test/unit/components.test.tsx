@@ -19,7 +19,7 @@ const live: LiveState = {
       name: 'Pet Shop API',
       version: 'v1',
       type: 'REST',
-      sourceArtifact: 'openapi-examples.json',
+      sourceArtifact: 'openapi-including-examples.json',
       messages: openapi.examples.filter((e) => e.example !== 'sell_bella').map((e) => ({ ...e, sourceArtifact: openapi.file.name })),
     },
     { id: 'svc-2', name: 'Legacy API', version: '0.9', type: 'REST', messages: [] },
@@ -40,13 +40,13 @@ describe('CatalogTree', () => {
 
   it('shows each service with what Microcks holds and what is ready to load', () => {
     expect(html).toContain('Pet Shop API v1 9 loaded 6 ready to load');
-    expect(html).toContain('openapi-examples.json OpenAPI · contract · service imported from it 9/10 loaded');
+    expect(html).toContain('openapi-including-examples.json OpenAPI · contract · service imported from it 9/10 loaded');
     expect(html).toContain('petshop-examples.yaml APIExamples · companion ready to load');
   });
 
   it('marks each example under its operation', () => {
-    expect(html).toContain('sell_bella openapi-examples.json ready to load');
-    expect(html).toContain('rex openapi-examples.json loaded');
+    expect(html).toContain('sell_bella openapi-including-examples.json ready to load');
+    expect(html).toContain('rex openapi-including-examples.json loaded');
   });
 
   it('shows services only in Microcks among the others, and files Microcks would not recognize', () => {
@@ -85,7 +85,7 @@ describe('ConsoleEntry', () => {
     at: '2026-09-16T20:00:00.000Z',
     method: 'POST',
     url: 'http://mk/api/artifact/upload?mainArtifact=true',
-    summary: 'Import openapi-examples.json as main artifact',
+    summary: 'Import openapi-including-examples.json as main artifact',
     command: ['curl -sS -X POST …', ...Array.from({ length: 10 }, (_, i) => `line ${i}`)].join('\n'),
     status: 400,
     durationMs: 12,
@@ -94,7 +94,7 @@ describe('ConsoleEntry', () => {
   const html = renderToStaticMarkup(<ConsoleEntry entry={entry} />);
 
   it('shows the call, its answer, and a way to copy the command', () => {
-    expect(text(html)).toContain('400 Import openapi-examples.json as main artifact 12 ms Version property is missing');
+    expect(text(html)).toContain('400 Import openapi-including-examples.json as main artifact 12 ms Version property is missing');
     expect(html).toContain('journal-fail');
     expect(html).toContain('aria-label="Copy command to clipboard"');
   });

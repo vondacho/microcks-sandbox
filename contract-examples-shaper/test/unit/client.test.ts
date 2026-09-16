@@ -95,16 +95,16 @@ describe('MicrocksClient', () => {
       onCall: (record) => calls.push(record),
     });
 
-    await client.upload('openapi-examples.json', '{\n  "openapi": "3.0.0"\n}', true);
+    await client.upload('openapi-including-examples.json', '{\n  "openapi": "3.0.0"\n}', true);
     await expect(client.deleteService('svc-1')).rejects.toThrow('Forbidden');
 
     expect(calls.map(({ method, summary, status, outcome }) => ({ method, summary, status, outcome }))).toEqual([
       { method: 'GET', summary: 'Read the authentication configuration', status: 200, outcome: 'Keycloak enabled' },
       { method: 'POST', summary: 'Get a token from Keycloak for shaper', status: 200, outcome: 'token obtained' },
-      { method: 'POST', summary: 'Import openapi-examples.json as main artifact', status: 201, outcome: 'imported into Pet Shop API:v1' },
+      { method: 'POST', summary: 'Import openapi-including-examples.json as main artifact', status: 201, outcome: 'imported into Pet Shop API:v1' },
       { method: 'DELETE', summary: 'Delete service svc-1', status: 403, outcome: 'Forbidden' },
     ]);
-    expect(calls[2].command).toContain(`-F 'file=@-;filename="openapi-examples.json"'`);
+    expect(calls[2].command).toContain(`-F 'file=@-;filename="openapi-including-examples.json"'`);
     expect(calls[3].command).toBe(`curl -sS -X DELETE -H "Authorization: Bearer $MICROCKS_TOKEN" 'http://mk/api/services/svc-1'`);
     for (const { command } of calls) {
       expect(command).not.toMatch(/s3cret|tok-value/);

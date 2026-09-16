@@ -33,7 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Contract conformance: Microcks acts as the <em>client</em>, replaying every example declared in
- * {@code openapi-examples.json} against the live API and checking each response against the
+ * {@code openapi-including-examples.json} against the live API and checking each response against the
  * contract's schema for that status code.
  *
  * <p>This is the inverse of {@link PetShopE2EIT}. There, the tests state what the API should do.
@@ -58,7 +58,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class PetShopConformanceIT {
 
     /** The contract under test, as published in {@code src/main/resources}. */
-    private static final String CONTRACT = "openapi-examples.json";
+    private static final String CONTRACT = "openapi-including-examples.json";
 
     /** {@code info.title} + ':' + {@code info.version} from that contract. */
     private static final String SERVICE_ID = "Pet Shop API:v1";

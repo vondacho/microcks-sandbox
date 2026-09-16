@@ -4,7 +4,7 @@ import { parseArtifact } from '../../src/lib/artifacts/parse';
 import { fixture } from './support';
 
 const GRANULAR = [
-  'openapi-examples.json',
+  'openapi-including-examples.json',
   'petshop-examples.yaml',
   'user-signedup-asyncapi.yaml',
   'account-asyncapi3.yaml',
@@ -32,7 +32,7 @@ describe('filterArtifact', () => {
   });
 
   it('returns the file untouched when everything is kept', () => {
-    const original = parseArtifact(fixture('openapi-examples.json'))!;
+    const original = parseArtifact(fixture('openapi-including-examples.json'))!;
     expect(filterArtifact(original, new Set(original.examples.map(exampleKey)))).toBe(original.file.content);
   });
 

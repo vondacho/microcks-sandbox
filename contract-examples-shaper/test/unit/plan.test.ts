@@ -16,7 +16,7 @@ import {
 import { fixture } from './support';
 
 const catalog = buildCatalog(
-  ['openapi-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml', 'films.graphql'].map(fixture),
+  ['openapi-including-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml', 'films.graphql'].map(fixture),
 );
 const petshop = catalog.contracts.find((c) => c.id === 'Pet Shop API:v1')!;
 const [openapi, examples, metadata] = petshop.files;
@@ -29,7 +29,7 @@ function liveWith(...files: typeof petshop.files): LiveState {
     name: 'Pet Shop API',
     version: 'v1',
     type: 'REST',
-    sourceArtifact: 'openapi-examples.json',
+    sourceArtifact: 'openapi-including-examples.json',
     messages: files.flatMap((f) => f.examples.map((ref) => ({ ...ref, sourceArtifact: f.file.name }))),
   };
   return { services: files.length ? [service] : [] };
@@ -41,7 +41,7 @@ function plan(mode: Mode, live: LiveState, selected: string[], applied: string[]
   return buildPlan({ catalog, live, mode, selected: new Set(selected), appliedFiles: new Set(applied) });
 }
 
-/** A readable digest of the steps: `upload openapi-examples.json main 3/10`, `delete svc-1`. */
+/** A readable digest of the steps: `upload openapi-including-examples.json main 3/10`, `delete svc-1`. */
 const digest = (steps: Step[]) =>
   steps.map((s) =>
     s.type === 'upload'
@@ -60,7 +60,7 @@ describe('loading', () => {
   it('creates the service from its contract before attaching companions, and applies metadata last', () => {
     const { steps, appliedFiles } = plan('load', EMPTY, leavesOfContract(petshop));
     expect(digest(steps)).toEqual([
-      'upload openapi-examples.json main 10/10',
+      'upload openapi-including-examples.json main 10/10',
       'upload petshop-examples.yaml 3/3',
       'upload petshop-metadata.yaml 0/0',
     ]);
@@ -69,7 +69,7 @@ describe('loading', () => {
 
   it('creates the service with no contract examples when only companion examples are picked', () => {
     const { steps } = plan('load', EMPTY, [leaf(examples, 'luna')]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 0/10', 'upload petshop-examples.yaml 1/3']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 0/10', 'upload petshop-examples.yaml 1/3']);
     expect(examplesOf((steps[0] as Extract<Step, { type: 'upload' }>).content)).toEqual([]);
   });
 
@@ -77,7 +77,7 @@ describe('loading', () => {
     const live = liveWith(openapi);
     live.services[0].messages = live.services[0].messages.filter((m) => m.example !== 'sell_bella');
     const { steps } = plan('load', live, [leaf(openapi, 'sell_bella')]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 10/10']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 10/10']);
   });
 
   it('does nothing for examples already loaded', () => {
@@ -88,7 +88,7 @@ describe('loading', () => {
     const live = liveWith(openapi);
     live.services[0].messages = live.services[0].messages.filter((m) => m.example !== 'rex');
     const { steps } = plan('load', live, [leaf(openapi, 'rex')], [appliedKey(petshop.id, 'petshop-metadata.yaml')]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 10/10', 'upload petshop-metadata.yaml 0/0']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 10/10', 'upload petshop-metadata.yaml 0/0']);
   });
 
   it('cannot create a service without its contract', () => {
@@ -104,7 +104,7 @@ describe('loading', () => {
   });
 
   it('loads a companion without examples as a whole, e.g. a collection holding only test scripts', () => {
-    const withCollection = buildCatalog(['openapi-examples.json', 'petshop-behavior-collection.json'].map(fixture));
+    const withCollection = buildCatalog(['openapi-including-examples.json', 'petshop-behavior-collection.json'].map(fixture));
     const { steps } = buildPlan({
       catalog: withCollection,
       live: EMPTY,
@@ -112,11 +112,11 @@ describe('loading', () => {
       selected: new Set(leavesOfContract(withCollection.contracts[0])),
       appliedFiles: new Set(),
     });
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 10/10', 'upload petshop-behavior-collection.json 0/0']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 10/10', 'upload petshop-behavior-collection.json 0/0']);
   });
 
   it('remembers a companion that leaves no trace in Microcks once loaded', () => {
-    const withCollection = buildCatalog(['openapi-examples.json', 'petshop-behavior-collection.json'].map(fixture));
+    const withCollection = buildCatalog(['openapi-including-examples.json', 'petshop-behavior-collection.json'].map(fixture));
     const { appliedFiles } = buildPlan({
       catalog: withCollection,
       live: EMPTY,
@@ -135,7 +135,7 @@ describe('loading', () => {
 describe('unloading', () => {
   it('removes one example by re-uploading its file without it', () => {
     const { steps } = plan('unload', liveWith(openapi, examples), [leaf(openapi, 'sell_bella')]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 9/10']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 9/10']);
     expect(examplesOf((steps[0] as Extract<Step, { type: 'upload' }>).content)).not.toContain('sell_bella');
   });
 
@@ -158,7 +158,7 @@ describe('unloading', () => {
     const { steps, appliedFiles } = plan('unload', live, [fileLeaf(metadata.file.path)], [
       appliedKey(petshop.id, 'petshop-metadata.yaml'),
     ]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 9/10']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 9/10']);
     expect(appliedFiles).toEqual({ 'Pet Shop API:v1': [] });
   });
 
@@ -171,14 +171,14 @@ describe('unloading', () => {
     const live = liveWith(openapi, examples);
     live.services[0].sourceArtifact = 'petshop-openapi-v0.json';
     expect(digest(plan('unload', live, [...leavesOfFile(openapi), ...leavesOfFile(examples)]).steps)).toEqual([
-      'upload openapi-examples.json main 0/10',
+      'upload openapi-including-examples.json main 0/10',
       'upload petshop-examples.yaml 0/3',
     ]);
   });
 
   it('leaves alone picked items that are still ready to load', () => {
     const { steps } = plan('unload', liveWith(openapi, examples), [leaf(openapi, 'rex'), fileLeaf(films.files[0].file.path), fileLeaf(metadata.file.path)]);
-    expect(digest(steps)).toEqual(['upload openapi-examples.json main 9/10']);
+    expect(digest(steps)).toEqual(['upload openapi-including-examples.json main 9/10']);
   });
 
   it('says in the plan when deleting takes examples the sources do not hold', () => {

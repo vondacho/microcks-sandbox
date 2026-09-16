@@ -6,7 +6,7 @@ import { buildView, filterService, leavesOf, type ServiceItem } from '../../src/
 import { fixture } from './support';
 
 const catalog = buildCatalog(
-  ['openapi-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml', 'films.graphql'].map(fixture),
+  ['openapi-including-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml', 'films.graphql'].map(fixture),
 );
 const petshop = catalog.contracts.find((c) => c.id === 'Pet Shop API:v1')!;
 const openapi = petshop.primary!;
@@ -20,9 +20,9 @@ const live: LiveState = {
       name: 'Pet Shop API',
       version: 'v1',
       type: 'REST',
-      sourceArtifact: 'openapi-examples.json',
+      sourceArtifact: 'openapi-including-examples.json',
       messages: [
-        ...openapi.examples.filter((e) => e.example !== 'sell_bella').map((e) => ({ ...e, sourceArtifact: 'openapi-examples.json' })),
+        ...openapi.examples.filter((e) => e.example !== 'sell_bella').map((e) => ({ ...e, sourceArtifact: 'openapi-including-examples.json' })),
         { operation: 'GET /api/pets/{id}', example: 'old_rex', sourceArtifact: 'legacy-examples.yaml' },
       ],
     },
@@ -57,8 +57,8 @@ describe('buildView', () => {
     const shown = examples(service('Pet Shop API:v1'));
     expect(shown).toEqual(
       expect.arrayContaining([
-        'GET /api/pets/{id} rex (openapi-examples.json): loaded',
-        'PUT /api/pets/{id} sell_bella (openapi-examples.json): ready',
+        'GET /api/pets/{id} rex (openapi-including-examples.json): loaded',
+        'PUT /api/pets/{id} sell_bella (openapi-including-examples.json): ready',
         'GET /api/pets/{id} luna (petshop-examples.yaml): ready',
         'GET /api/pets/{id} old_rex (legacy-examples.yaml): live-only',
       ]),
@@ -68,7 +68,7 @@ describe('buildView', () => {
 
   it('lists files with their state, including artifacts Microcks imported that the sources lack', () => {
     expect(service('Pet Shop API:v1').files.map((f) => [f.artifactName, f.state, f.examples ?? null, f.main])).toEqual([
-      ['openapi-examples.json', 'loaded', { loaded: 9, total: 10 }, true],
+      ['openapi-including-examples.json', 'loaded', { loaded: 9, total: 10 }, true],
       ['petshop-examples.yaml', 'ready', { loaded: 0, total: 3 }, false],
       ['petshop-metadata.yaml', 'ready', null, false],
       ['legacy-examples.yaml', 'live-only', null, false],
@@ -99,17 +99,17 @@ describe('filterService', () => {
     expect(examples(ready)).toEqual([
       'GET /api/pets/{id} luna (petshop-examples.yaml): ready',
       'GET /api/pets/{id} milo (petshop-examples.yaml): ready',
-      'PUT /api/pets/{id} sell_bella (openapi-examples.json): ready',
+      'PUT /api/pets/{id} sell_bella (openapi-including-examples.json): ready',
       'PUT /api/pets/{id} reserve_luna (petshop-examples.yaml): ready',
     ]);
-    expect(ready.files.map((f) => f.artifactName)).toEqual(['openapi-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml']);
+    expect(ready.files.map((f) => f.artifactName)).toEqual(['openapi-including-examples.json', 'petshop-examples.yaml', 'petshop-metadata.yaml']);
     expect(leavesOf(ready)).toHaveLength(5);
   });
 
   it('keeps what Microcks holds in the loaded tab', () => {
     const loaded = filterService(service('Pet Shop API:v1'), 'loaded')!;
     expect(examples(loaded).every((e) => !e.endsWith(': ready'))).toBe(true);
-    expect(loaded.files.map((f) => f.artifactName)).toEqual(['openapi-examples.json', 'legacy-examples.yaml']);
+    expect(loaded.files.map((f) => f.artifactName)).toEqual(['openapi-including-examples.json', 'legacy-examples.yaml']);
     expect(filterService(service('Movie Graph API:1.0'), 'loaded')).toBeUndefined();
     expect(filterService(service('Legacy API:0.9'), 'ready')).toBeUndefined();
   });

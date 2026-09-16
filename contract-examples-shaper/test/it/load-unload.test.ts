@@ -21,7 +21,7 @@ describe('loading and unloading into Microcks', () => {
   const journal: JournalRecord[] = [];
 
   const catalog: Catalog = buildCatalog(
-    ['openapi-examples.json', 'petshop-behavior-collection.json', 'petshop-examples.yaml', 'petshop-metadata.yaml'].map(fixture),
+    ['openapi-including-examples.json', 'petshop-behavior-collection.json', 'petshop-examples.yaml', 'petshop-metadata.yaml'].map(fixture),
   );
   const petshop = catalog.contracts[0];
   const openapi = petshop.files.find((f) => f.kind === 'openapi')!;
@@ -52,7 +52,7 @@ describe('loading and unloading into Microcks', () => {
   it('loads the whole contract with its companions', async () => {
     const plan = await apply('load', leavesOfContract(petshop));
     expect(plan.steps.map((s) => s.type === 'upload' && s.artifactName)).toEqual([
-      'openapi-examples.json',
+      'openapi-including-examples.json',
       'petshop-behavior-collection.json',
       'petshop-examples.yaml',
       'petshop-metadata.yaml',
@@ -60,7 +60,7 @@ describe('loading and unloading into Microcks', () => {
 
     expect(await examplesInMicrocks()).toEqual(
       expect.arrayContaining([
-        'PUT /api/pets/{id} sell_bella openapi-examples.json',
+        'PUT /api/pets/{id} sell_bella openapi-including-examples.json',
         'GET /api/pets/{id} luna petshop-examples.yaml',
       ]),
     );
@@ -73,7 +73,7 @@ describe('loading and unloading into Microcks', () => {
 
     await apply('unload', [exampleLeaf(openapi.file.path, sellBella)]);
 
-    expect(await examplesInMicrocks()).toEqual(before.filter((e) => e !== 'PUT /api/pets/{id} sell_bella openapi-examples.json'));
+    expect(await examplesInMicrocks()).toEqual(before.filter((e) => e !== 'PUT /api/pets/{id} sell_bella openapi-including-examples.json'));
     const sell = await fetch(`${microcks.getHttpEndpoint()}/rest/Pet%20Shop%20API/v1/api/pets/5`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -86,20 +86,20 @@ describe('loading and unloading into Microcks', () => {
   it('loads the example back', async () => {
     const sellBella = openapi.examples.find((e) => e.example === 'sell_bella')!;
     await apply('load', [exampleLeaf(openapi.file.path, sellBella)]);
-    expect(await examplesInMicrocks()).toContain('PUT /api/pets/{id} sell_bella openapi-examples.json');
+    expect(await examplesInMicrocks()).toContain('PUT /api/pets/{id} sell_bella openapi-including-examples.json');
   });
 
   it('journals command lines that do the same when pasted into a shell', async () => {
-    const upload = journal.findLast((r) => r.summary === 'Import openapi-examples.json as main artifact')!;
+    const upload = journal.findLast((r) => r.summary === 'Import openapi-including-examples.json as main artifact')!;
     const list = journal.findLast((r) => r.summary === 'List services')!;
 
     // The last import put sell_bella back; replaying the filtered import before it takes it out again.
     const withoutSellBella = journal.filter((r) => r.summary === upload.summary).at(-2)!;
     expect(execFileSync('bash', ['-c', withoutSellBella.command], { encoding: 'utf8' })).toBe('Pet Shop API:v1');
-    expect(await examplesInMicrocks()).not.toContain('PUT /api/pets/{id} sell_bella openapi-examples.json');
+    expect(await examplesInMicrocks()).not.toContain('PUT /api/pets/{id} sell_bella openapi-including-examples.json');
 
     expect(execFileSync('bash', ['-c', upload.command], { encoding: 'utf8' })).toBe('Pet Shop API:v1');
-    expect(await examplesInMicrocks()).toContain('PUT /api/pets/{id} sell_bella openapi-examples.json');
+    expect(await examplesInMicrocks()).toContain('PUT /api/pets/{id} sell_bella openapi-including-examples.json');
 
     const services = JSON.parse(execFileSync('bash', ['-c', list.command], { encoding: 'utf8' })) as { name: string }[];
     expect(services.map((s) => s.name)).toEqual(['Pet Shop API']);
@@ -112,7 +112,7 @@ describe('loading and unloading into Microcks', () => {
     const view = buildView(catalog, await client.liveState(), applied);
     const petshopView = view.services.find((s) => s.id === 'Pet Shop API:v1')!;
     const states = petshopView.operations.flatMap((op) => op.examples.map((e) => `${e.example} ${e.artifactName} ${e.state}`));
-    expect(states).toEqual(expect.arrayContaining(['sell_bella openapi-examples.json loaded', 'nala extra-examples.yaml live-only']));
+    expect(states).toEqual(expect.arrayContaining(['sell_bella openapi-including-examples.json loaded', 'nala extra-examples.yaml live-only']));
     expect(petshopView.counts).toMatchObject({ ready: 0, 'live-only': 3 });
     expect(petshopView.files.find((f) => f.artifactName === 'extra-examples.yaml')?.state).toBe('live-only');
   });

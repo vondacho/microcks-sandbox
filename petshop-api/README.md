@@ -214,7 +214,7 @@ lone container:
 
 ```java
 new MicrocksContainersEnsemble("quay.io/microcks/microcks-uber:latest")
-        .withMainArtifacts("openapi-examples.json")
+        .withMainArtifacts("openapi-including-examples.json")
         .withSecondaryArtifacts("petshop-behavior-collection.json")
         .withPostman();
 ```

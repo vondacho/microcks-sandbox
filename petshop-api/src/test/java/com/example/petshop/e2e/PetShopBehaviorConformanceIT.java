@@ -73,7 +73,7 @@ class PetShopBehaviorConformanceIT {
     private static final String IMAGE = "quay.io/microcks/microcks-uber:latest";
 
     /** The contract under test, as published in {@code src/main/resources}. */
-    private static final String CONTRACT = "openapi-examples.json";
+    private static final String CONTRACT = "openapi-including-examples.json";
 
     /** The behavioural assertions, layered onto the service the contract defines. */
     private static final String COLLECTION = "petshop-behavior-collection.json";

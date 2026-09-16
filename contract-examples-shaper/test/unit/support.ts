@@ -10,7 +10,7 @@ export const fixture = (name: string): SourceFile => ({
 });
 
 export const ALL_FIXTURES = [
-  'openapi-examples.json',
+  'openapi-including-examples.json',
   'petshop-behavior-collection.json',
   'petshop-examples.yaml',
   'petshop-metadata.yaml',
