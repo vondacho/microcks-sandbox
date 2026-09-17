@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../src/lib/artifacts/catalog';
-import { CatalogTree } from '../../src/components/CatalogTree';
+import { CatalogTree, previewOf } from '../../src/components/CatalogTree';
+import { ExchangeView } from '../../src/components/ExamplePreview';
+import type { ExchangePreview } from '../../src/lib/preview';
+import { buildView } from '../../src/lib/view';
 import { ConsoleEntry } from '../../src/components/Console';
 import { PlanPanel } from '../../src/components/PlanPanel';
 import type { LiveState } from '../../src/lib/microcks/live-state';
@@ -103,5 +106,32 @@ describe('ConsoleEntry', () => {
     expect(html).toContain('line 4');
     expect(html).not.toContain('line 5');
     expect(text(html)).toContain('show all 11 lines');
+  });
+});
+
+describe('Example preview', () => {
+  const view = buildView(catalog, live, new Set());
+  const service = view.services.find((s) => s.id === 'Pet Shop API:v1')!;
+  const example = (name: string, artifact = 'openapi-including-examples.json') =>
+    service.operations.flatMap((o) => o.examples).find((e) => e.example === name && e.artifactName === artifact)!;
+
+  it('offers a preview on every example', () => {
+    const html = renderToStaticMarkup(<CatalogTree catalog={catalog} live={live} applied={new Set()} selected={new Set()} onToggle={() => {}} />);
+    expect(html).toContain('aria-label="Preview sell_bella from openapi-including-examples.json"');
+    const examples = view.services.flatMap((s) => s.operations.flatMap((o) => o.examples));
+    expect(html.match(/>Preview</g)).toHaveLength(examples.length);
+  });
+
+  it('reads an example from where it is: the file, Microcks, or both when loaded', () => {
+    expect(previewOf(service, example('sell_bella')).tabs.map((t) => t.label)).toEqual(['Source file · openapi-including-examples.json']);
+    expect(previewOf(service, example('rex')).tabs.map((t) => t.label)).toEqual(['Source file · openapi-including-examples.json', 'In Microcks']);
+  });
+
+  it('draws an exchange: request line, headers, bodies', async () => {
+    const tab = previewOf(service, example('rex')).tabs[0];
+    const content = await tab.load();
+    expect('exchange' in content).toBe(true);
+    const html = text(renderToStaticMarkup(<ExchangeView exchange={(content as { exchange: ExchangePreview }).exchange} />));
+    expect(html).toContain('Request GET /api/pets/1 No body. Response 200 · application/json');
   });
 });

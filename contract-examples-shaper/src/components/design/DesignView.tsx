@@ -3,8 +3,10 @@ import type { Catalog } from '../../lib/artifacts/catalog';
 import type { SourceFile } from '../../lib/artifacts/types';
 import { draftIssues, duplicateDraft, freshName, newDraft, type Draft, type DraftIssue } from '../../lib/design/draft';
 import { designContract, isDesignable, type DesignContract, type DesignOperation } from '../../lib/design/operations';
-import type { PackagedFile } from '../../lib/design/package';
+import { packageDrafts, type PackagedFile } from '../../lib/design/package';
 import { SchemaValidator } from '../../lib/design/schema';
+import { previewFromDraft } from '../../lib/preview';
+import { PreviewDialog, sourceFileTab, type PreviewRequest } from '../ExamplePreview';
 import { DraftEditor } from './DraftEditor';
 import { PackagePanel } from './PackagePanel';
 import { useDrafts, type SaveState } from './useDrafts';
@@ -27,19 +29,43 @@ const SAVE_LABELS: Record<SaveState, string> = {
 };
 
 /**
- * Examples the sources already hold for an operation, by name. Packages added from here don't count: they hold the
- * drafts themselves, which would otherwise all clash with their own copy.
+ * Examples the sources already hold for an operation. Packages added from here don't count: they hold the drafts
+ * themselves, which would otherwise all clash with their own copy.
  */
-const existingExamples = (design: DesignContract, operation: string): string[] => {
+const sourceExamples = (design: DesignContract, operation: string) => {
   const designed = new Set(design.contract.files.filter((f) => f.file.origin === 'package').map((f) => f.file.path));
-  return (design.contract.operations.find((o) => o.name === operation)?.examples ?? []).filter((e) => !designed.has(e.path)).map((e) => e.example);
+  return (design.contract.operations.find((o) => o.name === operation)?.examples ?? []).filter((e) => !designed.has(e.path));
 };
+
+const existingExamples = (design: DesignContract, operation: string): string[] => sourceExamples(design, operation).map((e) => e.example);
+
+/** A draft as the exchange it describes, and as the APIExamples it packages into. */
+export function draftPreview(design: DesignContract, draft: Draft): PreviewRequest {
+  return {
+    title: draft.name || '(unnamed draft)',
+    subtitle: `${design.contract.id} · ${draft.operation} · draft`,
+    tabs: [
+      { label: 'Example', load: () => ({ exchange: previewFromDraft(draft) }) },
+      {
+        label: 'APIExamples',
+        load: () => {
+          try {
+            return { text: packageDrafts(design, [draft]).content };
+          } catch (e) {
+            return { missing: `Not packageable as it is: ${(e as Error).message}` };
+          }
+        },
+      },
+    ],
+  };
+}
 
 export function DesignView({ catalog, onAddToSources }: Props) {
   const { drafts, state, persistent, save, remove } = useDrafts();
   const [target, setTarget] = useState<Target>();
   const [openId, setOpenId] = useState<string>();
   const [confirmDelete, setConfirmDelete] = useState<string>();
+  const [preview, setPreview] = useState<PreviewRequest>();
 
   const results = useMemo(() => catalog.contracts.map(designContract), [catalog]);
   const designs = useMemo(() => results.filter(isDesignable), [results]);
@@ -153,8 +179,32 @@ export function DesignView({ catalog, onAddToSources }: Props) {
           <>
             {op.summary && <p className="muted">{op.summary}</p>}
             <div className="draft-tabs">
-              {existingExamples(design, op.name).length > 0 && (
-                <p className="muted note-inline">In the sources: {existingExamples(design, op.name).join(', ')}</p>
+              {sourceExamples(design, op.name).length > 0 && (
+                <p className="muted note-inline">
+                  In the sources:{' '}
+                  {sourceExamples(design, op.name).map((e, i) => {
+                    const artifact = design.contract.files.find((f) => f.file.path === e.path)!;
+                    return (
+                      <span key={`${e.path}:${e.example}`}>
+                        {i > 0 && ', '}
+                        <button
+                          type="button"
+                          className="link"
+                          title={`Preview ${e.example} from ${artifact.file.name}`}
+                          onClick={() =>
+                            setPreview({
+                              title: e.example,
+                              subtitle: `${design.contract.id} · ${op.name} · from ${artifact.file.name}`,
+                              tabs: [sourceFileTab(artifact, e)],
+                            })
+                          }
+                        >
+                          {e.example}
+                        </button>
+                      </span>
+                    );
+                  })}
+                </p>
               )}
               <div className="row">
                 {opDrafts.map((d) => {
@@ -176,6 +226,9 @@ export function DesignView({ catalog, onAddToSources }: Props) {
                 </button>
                 {open && (
                   <>
+                    <button type="button" className="secondary small" onClick={() => setPreview(draftPreview(design, open))}>
+                      Preview
+                    </button>
                     <button type="button" className="secondary small" onClick={() => create(design, op, open)}>
                       Duplicate
                     </button>
@@ -208,6 +261,8 @@ export function DesignView({ catalog, onAddToSources }: Props) {
           </>
         )}
       </section>
+
+      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(undefined)} />}
 
       <PackagePanel
         designs={designs}

@@ -259,7 +259,8 @@ function postmanPath(request: JsonObject): string {
   return raw.replace(/:([A-Za-z0-9_]+)/g, '{$1}') || '/';
 }
 
-function postmanItems(node: Json | undefined, found: { operation: string; item: JsonObject }[] = []) {
+/** The request items of a collection, folders flattened, each with the operation name Microcks matches it by. */
+export function postmanItems(node: Json | undefined, found: { operation: string; item: JsonObject }[] = []) {
   for (const item of Array.isArray(node) ? node : []) {
     if (!isObject(item)) continue;
     if (isObject(item.request)) {

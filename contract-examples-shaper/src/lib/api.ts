@@ -2,6 +2,7 @@ import type { SourceFile } from './artifacts/types';
 import type { LiveState } from './microcks/live-state';
 import type { MicrocksStatus } from './microcks/client';
 import type { JournalPage } from './microcks/journal';
+import type { ExchangePreview } from './preview';
 import type { MicrocksPort } from './runner';
 
 /** The browser's way to Microcks: through this app's API routes, which hold the credentials. */
@@ -37,6 +38,11 @@ const post = (body: unknown): RequestInit => ({
 export const getStatus = () => call<MicrocksStatus>('/api/microcks/status');
 
 export const getLiveState = () => call<LiveState>('/api/microcks/services');
+
+export const getExchange = (serviceId: string, operation: string, example: string, artifact: string) =>
+  call<ExchangePreview>(
+    `/api/microcks/services/${encodeURIComponent(serviceId)}/exchange?${new URLSearchParams({ operation, example, artifact })}`,
+  );
 
 export type FetchResult = { url: string; file: SourceFile } | { url: string; error: string };
 

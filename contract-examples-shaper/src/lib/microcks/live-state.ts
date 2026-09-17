@@ -25,6 +25,16 @@ type Raw = Record<string, unknown>;
 const record = (v: unknown): Raw => (typeof v === 'object' && v !== null ? (v as Raw) : {});
 const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
+/** The example name of one exchange Microcks holds, and the artifact it was imported from. */
+export function exchangeIdentity(exchange: unknown): { example?: string; sourceArtifact?: string } {
+  const e = record(exchange);
+  const parts = [record(e.response), record(e.request), record(e.eventMessage), record(e.reply)];
+  return {
+    example: text(e.name) ?? parts.map((p) => text(p.name)).find(Boolean),
+    sourceArtifact: parts.map((p) => text(p.sourceArtifact)).find(Boolean),
+  };
+}
+
 /**
  * Reads `GET /api/services/{id}?messages=true`. Each operation maps to exchanges shaped by service type:
  * `{name, request, response}` for request/response pairs, `{eventMessage}` for events.
@@ -35,10 +45,7 @@ export function toLiveService(raw: unknown): LiveService {
   const messages: LiveMessage[] = [];
   for (const [operation, exchanges] of Object.entries(record(body.messagesMap))) {
     for (const exchange of Array.isArray(exchanges) ? exchanges : []) {
-      const e = record(exchange);
-      const parts = [record(e.response), record(e.request), record(e.eventMessage), record(e.reply)];
-      const example = text(e.name) ?? parts.map((p) => text(p.name)).find(Boolean);
-      const sourceArtifact = parts.map((p) => text(p.sourceArtifact)).find(Boolean);
+      const { example, sourceArtifact } = exchangeIdentity(exchange);
       if (example && sourceArtifact) messages.push({ operation, example, sourceArtifact });
     }
   }

@@ -957,3 +957,112 @@ textarea.code {
   color: inherit;
   font-weight: 600;
 }
+
+/* Example preview */
+
+.preview-link {
+  font-size: 0.85em;
+}
+
+.preview-dialog {
+  width: min(56rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.preview-dialog::backdrop {
+  background: rgba(10, 14, 20, 0.45);
+}
+
+.preview-frame {
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.preview-header h2 {
+  margin: 0;
+}
+
+.preview-header p {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.exchange {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.exchange section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.exchange h3 {
+  margin: 0;
+}
+
+.exchange-summary {
+  margin: 0;
+  font-style: italic;
+}
+
+.exchange-line {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.exchange-headers {
+  margin: 0;
+  display: grid;
+  gap: 0.1rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.exchange-headers div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.exchange-headers dt {
+  color: var(--muted);
+}
+
+.exchange-headers dt::after {
+  content: ':';
+}
+
+.exchange-headers dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.exchange-body {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  background: var(--console-bg);
+  color: var(--console-text);
+  font-size: 0.85em;
+}
+
+.exchange-empty {
+  margin: 0;
+  font-size: 0.9em;
+}

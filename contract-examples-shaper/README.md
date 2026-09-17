@@ -44,6 +44,11 @@ Microcks advertises is only reachable from inside its own network, override it w
    - **ready to load**: in the sources, not (yet) in Microcks;
    - **only in Microcks**: imported from a file the sources don't hold, or no longer in the file that was imported.
 
+   *Preview* on an example shows it as an exchange: the request line, headers and body, then the response status,
+   headers and body (or the message of an event), with the example's summary. An example ready to load is read from
+   its source file; one only in Microcks from what Microcks holds, including the dispatch criteria it matches requests
+   on. A loaded example has both tabs, to check that what's served is what the file declares.
+
    The tabs *All*, *Ready to load* and *Loaded* (everything Microcks holds) narrow the tree, and a service or
    operation checkbox selects only what the tab shows: tick a service under *Ready to load* to load all of what's
    missing, under *Loaded* to take out all of what's there.
@@ -74,7 +79,8 @@ with *Browse & load*.
 2. **Design.** *+ New example* starts a draft from the contract: required path, query and header parameters, a request
    body and a response body sampled from the schemas (their `example`, `default` or first `enum` value when they have
    one), and the first success status. Edit it field by field; *Fill from schema* and *Format* help with bodies.
-   *Duplicate* starts a variant. Drafts are saved in the browser (IndexedDB) as you type, and are there on your next
+   *Duplicate* starts a variant. *Preview* shows the draft as the exchange it describes and as the APIExamples it
+   packages into; the examples the sources already hold for the operation can be previewed too. Drafts are saved in the browser (IndexedDB) as you type, and are there on your next
    visit.
 3. **Check.** Each field shows what's wrong with it. Only what makes an example unusable is an error and keeps the draft
    out of a package: no name, a name used twice for the operation, a missing path parameter (Microcks builds the mock's
@@ -157,10 +163,12 @@ of them keeps it.
 ## Tests
 
 ```bash
-npm test          # 105 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
-                  # design (operations, schema sampling and validation, drafts, packaging, zip, draft stores), components
+npm test          # 117 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
+                  # design (operations, schema sampling and validation, drafts, packaging, zip, draft stores),
+                  # previews (OpenAPI, APIExamples, AsyncAPI, Postman, drafts, Microcks), components
 npm run test:it   # a real microcks-uber via Testcontainers: load all, unload one example, load it back,
-                  # replay journaled commands with curl, show an example only Microcks holds, delete;
+                  # preview what Microcks serves against the file, replay journaled commands with curl, show an
+                  # example only Microcks holds, delete;
                   # design examples for a contract without any, package, load, and call the mocks
 ```
 
@@ -183,13 +191,14 @@ src/lib/microcks/    client (REST + Keycloak, server only), live-state, journal,
                      server (env, one client and one journal per process)
 src/lib/plan.ts      selection + live state → ordered steps; what each selectable item's state is
 src/lib/view.ts      sources + live state → the merged tree, its states, counts and tabs
+src/lib/preview.ts   an example as an exchange, read from a source file, a draft, or Microcks
 src/lib/runner.ts    runs steps against a MicrocksPort (the API routes in the browser, the client in tests)
 src/lib/api.ts       the browser's calls to the API routes
 src/lib/sources.ts   reading picked files, naming URLs
 src/lib/design/      operations (what an OpenAPI operation declares), schema (samples, validation), draft (model,
                      issues), package (APIExamples), export (file or zip), store (IndexedDB, memory)
-src/pages/api/       microcks/{status,services,services/[id],artifacts}, sources/fetch, journal
-src/components/      App, SourcePicker, MicrocksStatus, CatalogTree, PlanPanel, Console, Check
+src/pages/api/       microcks/{status,services,services/[id],services/[id]/exchange,artifacts}, sources/fetch, journal
+src/components/      App, SourcePicker, MicrocksStatus, CatalogTree, PlanPanel, Console, Check, ExamplePreview
 src/components/design/  DesignView, DraftEditor, PackagePanel, useDrafts
 test/unit/           vitest, no container
 test/it/             vitest + @microcks/microcks-testcontainers

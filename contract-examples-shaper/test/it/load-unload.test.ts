@@ -7,6 +7,7 @@ import type { JournalRecord } from '../../src/lib/microcks/journal';
 import { liveServiceId } from '../../src/lib/microcks/live-state';
 import { buildPlan, exampleLeaf, leavesOfContract, mergeApplied, type Mode } from '../../src/lib/plan';
 import { runPlan, type StepOutcome } from '../../src/lib/runner';
+import { previewFromArtifact } from '../../src/lib/preview';
 import { buildView } from '../../src/lib/view';
 import { fixture } from '../unit/support';
 
@@ -87,6 +88,19 @@ describe('loading and unloading into Microcks', () => {
     const sellBella = openapi.examples.find((e) => e.example === 'sell_bella')!;
     await apply('load', [exampleLeaf(openapi.file.path, sellBella)]);
     expect(await examplesInMicrocks()).toContain('PUT /api/pets/{id} sell_bella openapi-including-examples.json');
+  });
+
+  it('previews an example as Microcks serves it, matching what its source file declares', async () => {
+    const [service] = (await client.liveState()).services;
+    const served = await client.exchange(service.id, 'PUT /api/pets/{id}', 'sell_bella', 'openapi-including-examples.json');
+    expect(served).toMatchObject({
+      request: { method: 'PUT', path: '/api/pets/5', mediaType: 'application/json' },
+      response: { status: '200', mediaType: 'application/json', dispatchCriteria: '/id=5' },
+    });
+    const declared = previewFromArtifact(openapi, { operation: 'PUT /api/pets/{id}', example: 'sell_bella' })!;
+    expect(served?.request?.body).toBe(declared.request?.body);
+    expect(served?.response?.body).toBe(declared.response?.body);
+    expect(await client.exchange(service.id, 'PUT /api/pets/{id}', 'sell_bella', 'elsewhere.yaml')).toBeUndefined();
   });
 
   it('journals command lines that do the same when pasted into a shell', async () => {

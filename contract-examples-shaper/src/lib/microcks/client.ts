@@ -1,7 +1,8 @@
+import { previewFromMicrocks, type ExchangePreview } from '../preview';
 import type { MicrocksPort } from '../runner';
 import { requestCommand, tokenCommand, uploadCommand } from './curl';
 import type { JournalRecord } from './journal';
-import { toLiveService, type LiveState } from './live-state';
+import { exchangeIdentity, toLiveService, type LiveState } from './live-state';
 
 export interface MicrocksConfig {
   /** Base URL of Microcks, e.g. http://localhost:8585 */
@@ -99,6 +100,18 @@ export class MicrocksClient implements MicrocksPort {
       ),
     );
     return { services };
+  }
+
+  /** One example as Microcks holds and serves it, or undefined when it holds no such example. */
+  async exchange(serviceId: string, operation: string, example: string, sourceArtifact: string): Promise<ExchangePreview | undefined> {
+    const body = (await this.json(`/api/services/${encodeURIComponent(serviceId)}?messages=true`, {
+      summary: `Read example ${example} of ${operation}`,
+    })) as { messagesMap?: Record<string, unknown[]> };
+    const found = (body.messagesMap?.[operation] ?? []).find((raw) => {
+      const identity = exchangeIdentity(raw);
+      return identity.example === example && identity.sourceArtifact === sourceArtifact;
+    });
+    return found === undefined ? undefined : previewFromMicrocks(operation, found);
   }
 
   async upload(artifactName: string, content: string, mainArtifact: boolean): Promise<string> {

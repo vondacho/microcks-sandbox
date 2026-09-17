@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import type { Catalog } from '../lib/artifacts/catalog';
 import type { ArtifactKind, ParsedArtifact } from '../lib/artifacts/types';
 import { liveServiceId, type LiveState } from '../lib/microcks/live-state';
+import { getExchange } from '../lib/api';
 import { fileLeaf } from '../lib/plan';
 import { Check } from './Check';
-import { buildView, filterService, inTab, leavesOf, type FileItem, type ItemState, type ServiceItem, type Tab } from '../lib/view';
+import { PreviewDialog, sourceFileTab, type PreviewRequest, type PreviewTab } from './ExamplePreview';
+import { buildView, filterService, inTab, leavesOf, type ExampleItem, type FileItem, type ItemState, type ServiceItem, type Tab } from '../lib/view';
 
 interface Props {
   catalog: Catalog;
@@ -104,7 +106,24 @@ function FileRow({ file, selected, onToggle }: { file: FileItem } & Pick<Props, 
   );
 }
 
-function ServiceNode({ service, selected, onToggle }: { service: ServiceItem } & Pick<Props, 'selected' | 'onToggle'>) {
+/**
+ * Where an example can be read from: its source file unless only Microcks holds it, and Microcks unless it is only
+ * ready to load. A loaded example gets both, to compare what the file says with what Microcks serves.
+ */
+export function previewOf(service: ServiceItem, e: ExampleItem): PreviewRequest {
+  const tabs: PreviewTab[] = [];
+  const artifact = service.files.find((f) => f.artifactName === e.artifactName && f.artifact)?.artifact;
+  if (artifact && e.state !== 'live-only') tabs.push(sourceFileTab(artifact, e));
+  const live = service.live;
+  if (live && e.state !== 'ready') {
+    tabs.push({ label: 'In Microcks', load: async () => ({ exchange: await getExchange(live.id, e.operation, e.example, e.artifactName) }) });
+  }
+  return { title: e.example, subtitle: `${service.id} · ${e.operation} · from ${e.artifactName}`, tabs };
+}
+
+type PreviewProps = { onPreview: (preview: PreviewRequest) => void };
+
+function ServiceNode({ service, selected, onToggle, onPreview }: { service: ServiceItem } & Pick<Props, 'selected' | 'onToggle'> & PreviewProps) {
   const onlyInMicrocks = !service.contract;
   return (
     <details className="contract" open>
@@ -154,6 +173,9 @@ function ServiceNode({ service, selected, onToggle }: { service: ServiceItem } &
                 <span>{e.example}</span>
                 <span className="muted">{e.artifactName}</span>
                 <StateBadge state={e.state} />
+                <button type="button" className="link preview-link" onClick={() => onPreview(previewOf(service, e))} aria-label={`Preview ${e.example} from ${e.artifactName}`}>
+                  Preview
+                </button>
               </li>
             ))}
           </ul>
@@ -168,6 +190,7 @@ function ServiceNode({ service, selected, onToggle }: { service: ServiceItem } &
 
 export function CatalogTree({ catalog, live, applied, selected, onToggle }: Props) {
   const [tab, setTab] = useState<Tab>('all');
+  const [preview, setPreview] = useState<PreviewRequest>();
   const view = useMemo(() => buildView(catalog, live, applied), [catalog, live, applied]);
   const services = view.services.flatMap((s) => filterService(s, tab) ?? []);
 
@@ -192,7 +215,7 @@ export function CatalogTree({ catalog, live, applied, selected, onToggle }: Prop
       {empty && <p className="muted empty">{EMPTY_TAB[tab]}</p>}
 
       {services.map((service) => (
-        <ServiceNode key={service.id} service={service} selected={selected} onToggle={onToggle} />
+        <ServiceNode key={service.id} service={service} selected={selected} onToggle={onToggle} onPreview={setPreview} />
       ))}
 
       {unidentified.length > 0 && (
@@ -251,6 +274,7 @@ export function CatalogTree({ catalog, live, applied, selected, onToggle }: Prop
           </ul>
         </details>
       )}
+      {preview && <PreviewDialog preview={preview} onClose={() => setPreview(undefined)} />}
     </section>
   );
 }
