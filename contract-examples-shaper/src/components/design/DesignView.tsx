@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { Catalog } from '../../lib/artifacts/catalog';
+import type { SourceFile } from '../../lib/artifacts/types';
 import { draftIssues, duplicateDraft, freshName, newDraft, type Draft, type DraftIssue } from '../../lib/design/draft';
 import { designContract, isDesignable, type DesignContract, type DesignOperation } from '../../lib/design/operations';
+import type { PackagedFile } from '../../lib/design/package';
 import { SchemaValidator } from '../../lib/design/schema';
 import { DraftEditor } from './DraftEditor';
 import { PackagePanel } from './PackagePanel';
@@ -9,6 +11,7 @@ import { useDrafts, type SaveState } from './useDrafts';
 
 interface Props {
   catalog: Catalog;
+  onAddToSources: (files: PackagedFile[], designs: DesignContract[]) => SourceFile[];
 }
 
 interface Target {
@@ -23,11 +26,16 @@ const SAVE_LABELS: Record<SaveState, string> = {
   failed: 'Saving failed',
 };
 
-/** Examples the sources already hold for an operation, by name. */
-const existingExamples = (design: DesignContract, operation: string): string[] =>
-  design.contract.operations.find((o) => o.name === operation)?.examples.map((e) => e.example) ?? [];
+/**
+ * Examples the sources already hold for an operation, by name. Packages added from here don't count: they hold the
+ * drafts themselves, which would otherwise all clash with their own copy.
+ */
+const existingExamples = (design: DesignContract, operation: string): string[] => {
+  const designed = new Set(design.contract.files.filter((f) => f.file.origin === 'package').map((f) => f.file.path));
+  return (design.contract.operations.find((o) => o.name === operation)?.examples ?? []).filter((e) => !designed.has(e.path)).map((e) => e.example);
+};
 
-export function DesignView({ catalog }: Props) {
+export function DesignView({ catalog, onAddToSources }: Props) {
   const { drafts, state, persistent, save, remove } = useDrafts();
   const [target, setTarget] = useState<Target>();
   const [openId, setOpenId] = useState<string>();
@@ -201,7 +209,13 @@ export function DesignView({ catalog }: Props) {
         )}
       </section>
 
-      <PackagePanel designs={designs} drafts={drafts} issues={issues} onOpen={(d) => select(d.contractId, d.operation, d.id)} />
+      <PackagePanel
+        designs={designs}
+        drafts={drafts}
+        issues={issues}
+        onOpen={(d) => select(d.contractId, d.operation, d.id)}
+        onAddToSources={(files) => onAddToSources(files, designs)}
+      />
     </div>
   );
 }

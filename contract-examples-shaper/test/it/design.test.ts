@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../src/lib/artifacts/catalog';
 import { draftIssues, hasErrors, newDraft, type Draft } from '../../src/lib/design/draft';
 import { designContract, type DesignContract } from '../../src/lib/design/operations';
-import { packageDrafts } from '../../src/lib/design/package';
+import { addPackagesToSources, packageDrafts } from '../../src/lib/design/package';
 import { SchemaValidator } from '../../src/lib/design/schema';
 import { MicrocksClient } from '../../src/lib/microcks/client';
 import { buildPlan, leavesOfContract, leavesOfFile, type Mode } from '../../src/lib/plan';
@@ -69,7 +69,8 @@ describe('designing examples for a contract without any', () => {
 
   it('serves the designed examples once their package is loaded', async () => {
     const file = packageDrafts(design, designed());
-    const catalog = buildCatalog([contract, { path: file.fileName, name: file.fileName, content: file.content, origin: 'folder' }]);
+    // As the package panel's "Add to sources" does.
+    const catalog = buildCatalog(addPackagesToSources([contract], [file], [design]).sources);
     const packaged = catalog.contracts[0].files.find((f) => f.file.name === file.fileName)!;
     expect(packaged).toMatchObject({ kind: 'apiexamples', role: 'secondary' });
 

@@ -15,7 +15,7 @@ import {
 } from '../../src/lib/design/draft';
 import { exportPackage } from '../../src/lib/design/export';
 import { designContract, isDesignable, type DesignContract } from '../../src/lib/design/operations';
-import { defaultFileName, packageDrafts } from '../../src/lib/design/package';
+import { addPackagesToSources, defaultFileName, packageDrafts, packageSource } from '../../src/lib/design/package';
 import { coerceParameter, sampleFromSchema, SchemaValidator, toDraft07 } from '../../src/lib/design/schema';
 import { IndexedDbDraftStore, MemoryDraftStore } from '../../src/lib/design/store';
 import { fixture } from './support';
@@ -165,6 +165,34 @@ describe('packageDrafts', () => {
         body:
           id: 1
           name: Rex`);
+  });
+
+  it('joins the sources as a companion of its contract, ready to load', () => {
+    const file = packageDrafts(design, [rex, sell]);
+    const { sources, replaced } = addPackagesToSources([fixture('openapi.json')], [file], [design]);
+    expect(replaced).toEqual([]);
+    const contract = buildCatalog(sources).contracts[0];
+    expect(contract.files.map((f) => [f.file.path, f.kind, f.role, f.file.origin])).toEqual([
+      ['fixtures/openapi.json', 'openapi', 'primary', 'folder'],
+      ['designed/pet-shop-api-v1-examples.yaml', 'apiexamples', 'secondary', 'package'],
+    ]);
+    expect(contract.operations.flatMap((o) => o.examples.map((e) => e.example))).toEqual(['rex', 'sell_bella']);
+  });
+
+  it('replaces, in the sources, an earlier package or a file of the contract with the same name', () => {
+    const first = packageDrafts(design, [rex], 'api-examples.yaml');
+    const onDisk = { ...packageSource(first), path: 'resources/api-examples.yaml', origin: 'folder' as const };
+    const designs = [designContract(buildCatalog([fixture('openapi.json'), onDisk]).contracts[0]) as DesignContract];
+
+    const once = addPackagesToSources([fixture('openapi.json'), onDisk], [first], designs);
+    expect(once.replaced.map((f) => f.path)).toEqual(['resources/api-examples.yaml']);
+    expect(once.sources.map((f) => f.path)).toEqual(['designed/api-examples.yaml', 'fixtures/openapi.json']);
+
+    const second = packageDrafts(design, [rex, sell], 'api-examples.yaml');
+    const twice = addPackagesToSources(once.sources, [second], designs);
+    expect(twice.replaced).toEqual([]);
+    expect(twice.sources.map((f) => f.path)).toEqual(['designed/api-examples.yaml', 'fixtures/openapi.json']);
+    expect(twice.sources[0].content).toBe(second.content);
   });
 
   it('names the file after the contract', () => {

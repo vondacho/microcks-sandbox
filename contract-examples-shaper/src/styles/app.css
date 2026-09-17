@@ -944,3 +944,16 @@ textarea.code {
   color: var(--console-text);
   font-size: 0.8em;
 }
+
+.added {
+  margin: 0.5rem 0 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: var(--on-bg);
+  color: var(--on-text);
+}
+
+.added a {
+  color: inherit;
+  font-weight: 600;
+}

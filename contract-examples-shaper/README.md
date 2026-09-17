@@ -82,7 +82,11 @@ with *Browse & load*.
    example of a `400` is meant to carry a request the contract refuses. So is a name the sources already use for the
    operation.
 4. **Package and export.** Tick drafts, adjust the file name if needed (default `<name>-<version>-examples.yaml`),
-   *Preview*, then *Download*: one YAML for one contract, a `.zip` of one YAML per contract otherwise.
+   *Preview*, then *Download*: one YAML for one contract, a `.zip` of one YAML per contract otherwise. Or *Add to
+   sources*: the package joins the sources as `designed/<file name>`, a companion of its contract whose examples are
+   ready to load in *Browse & load*. Adding again replaces it; so does a file of the contract with the same name
+   already in the sources (only in the sources: the file on disk is untouched). Like every source, it lasts until the
+   page is reloaded; the drafts stay.
 
 A package is an [APIExamples](https://microcks.io/documentation/references/examples/) document: a secondary
 artifact that leaves the contract untouched. Path and query parameters go under `request.parameters`, where Microcks
@@ -90,9 +94,9 @@ tells them apart by the `{name}` placeholders of the operation; header parameter
 `Content-Type` and `Accept` from the media types; JSON bodies are written as YAML structures. Before a package is handed
 out it is read back with the same rules as any source file, and must hold exactly the drafts picked.
 
-Add the downloaded file to the sources, next to its contract, to load it from *Browse & load*: it shows up as a
-companion whose examples are ready to load. A file named like an existing companion replaces that companion's
-examples when loaded; the package panel says so.
+A package named like a companion of the contract replaces that companion's examples when loaded into Microcks; the
+package panel says so. Examples of packages added to the sources don't count as clashing with the drafts they were
+made from.
 
 ## How loading and unloading work
 
@@ -153,7 +157,7 @@ of them keeps it.
 ## Tests
 
 ```bash
-npm test          # 103 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
+npm test          # 105 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
                   # design (operations, schema sampling and validation, drafts, packaging, zip, draft stores), components
 npm run test:it   # a real microcks-uber via Testcontainers: load all, unload one example, load it back,
                   # replay journaled commands with curl, show an example only Microcks holds, delete;

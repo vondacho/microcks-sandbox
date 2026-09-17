@@ -1,6 +1,8 @@
 import { serializeDocument, type Json, type JsonObject } from '../artifacts/document';
 import { exampleKey } from '../artifacts/filter';
 import { parseArtifact } from '../artifacts/parse';
+import type { SourceFile } from '../artifacts/types';
+import { mergeSources } from '../sources';
 import type { Draft } from './draft';
 import { isJsonMediaType, type DesignContract } from './operations';
 
@@ -10,6 +12,37 @@ export interface PackagedFile {
   fileName: string;
   content: string;
   examples: number;
+}
+
+/** The source file a package becomes once added to the sources. Adding it again replaces it. */
+export const packageSource = (file: PackagedFile): SourceFile => ({
+  path: `designed/${file.fileName}`,
+  name: file.fileName,
+  content: file.content,
+  origin: 'package',
+});
+
+/**
+ * The sources with packages added. A source file of the same contract sharing a package's name is replaced by it:
+ * Microcks keys examples by file name, so the two could not be loaded side by side anyway. Only the sources change;
+ * the file on disk stays as it is.
+ */
+export function addPackagesToSources(
+  sources: SourceFile[],
+  files: PackagedFile[],
+  designs: DesignContract[],
+): { sources: SourceFile[]; replaced: SourceFile[] } {
+  const added = files.map(packageSource);
+  const replacedPaths = new Set(
+    files.flatMap((f) => {
+      const contract = designs.find((d) => d.contract.id === f.contractId)?.contract;
+      return (contract?.files ?? []).filter((a) => a.file.name === f.fileName && a.file.path !== packageSource(f).path).map((a) => a.file.path);
+    }),
+  );
+  return {
+    sources: mergeSources(sources.filter((s) => !replacedPaths.has(s.path)), added),
+    replaced: sources.filter((s) => replacedPaths.has(s.path)),
+  };
 }
 
 const slug = (text: string): string =>
@@ -91,7 +124,7 @@ export function packageDrafts(design: DesignContract, drafts: Draft[], fileName 
   };
   const content = serializeDocument(document, 'yaml');
 
-  const read = parseArtifact({ path: fileName, name: fileName, content, origin: 'folder' });
+  const read = parseArtifact({ path: `designed/${fileName}`, name: fileName, content, origin: 'package' });
   const expected = new Set(sorted.map((d) => exampleKey({ operation: d.operation, example: d.name.trim() })));
   if (
     read?.kind !== 'apiexamples' ||

@@ -44,6 +44,7 @@ describe('PackagePanel', () => {
         drafts={[rex, sell]}
         issues={new Map([[sell.id, issues], [rex.id, []]])}
         onOpen={() => {}}
+        onAddToSources={() => []}
       />,
     ),
   );
@@ -51,6 +52,6 @@ describe('PackagePanel', () => {
   it('lists drafts per contract, flagging those that cannot be packaged yet', () => {
     expect(html).toContain('Pet Shop API v1 rex GET /api/pets/{id} sell_bella PUT /api/pets/{id} 1 to fix 1 warning');
     expect(html).toContain('File name');
-    expect(html).toContain('0 examples in 0 files');
+    expect(html).toContain('0 examples in 0 files Download Add to sources Preview');
   });
 });

@@ -1,11 +1,12 @@
 /** A file as picked from a folder or fetched from a URL, before anything is known about it. */
 export interface SourceFile {
-  /** Where it came from: a path relative to the picked folder, or the URL. Unique within a catalog. */
+  /** Where it came from: a path relative to the picked folder, the URL, or `designed/<name>`. Unique within a catalog. */
   path: string;
   /** The artifact name Microcks will know it by: the multipart filename of the upload. */
   name: string;
   content: string;
-  origin: 'folder' | 'url';
+  /** `package`: packaged from drafts in the design activity. */
+  origin: 'folder' | 'url' | 'package';
 }
 
 /** What Microcks' MockRepositoryImporterFactory would take the file for. */

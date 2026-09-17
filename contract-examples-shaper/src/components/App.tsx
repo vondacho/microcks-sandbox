@@ -6,6 +6,7 @@ import type { MicrocksStatus as Status } from '../lib/microcks/client';
 import type { LiveState } from '../lib/microcks/live-state';
 import { buildPlan, mergeApplied, type Mode, type Plan } from '../lib/plan';
 import { runPlan, type StepOutcome } from '../lib/runner';
+import { addPackagesToSources } from '../lib/design/package';
 import { mergeSources } from '../lib/sources';
 import { CatalogTree } from './CatalogTree';
 import { Console } from './Console';
@@ -146,7 +147,15 @@ export default function App() {
 
       {activity === 'design' ? (
         <main>
-          <DesignView catalog={catalog} />
+          <DesignView
+            catalog={catalog}
+            onAddToSources={(files, designs) => {
+              const { sources: next, replaced } = addPackagesToSources(sources, files, designs);
+              setPlan(undefined);
+              setSources(next);
+              return replaced;
+            }}
+          />
         </main>
       ) : (
       <main className="workspace">

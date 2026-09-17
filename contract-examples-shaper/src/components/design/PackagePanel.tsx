@@ -3,6 +3,7 @@ import type { Draft, DraftIssue } from '../../lib/design/draft';
 import { hasErrors } from '../../lib/design/draft';
 import { download, exportPackage } from '../../lib/design/export';
 import type { DesignContract } from '../../lib/design/operations';
+import type { SourceFile } from '../../lib/artifacts/types';
 import { defaultFileName, packageDrafts, type PackagedFile } from '../../lib/design/package';
 import { Check } from '../Check';
 
@@ -11,18 +12,22 @@ interface Props {
   drafts: Draft[];
   issues: Map<string, DraftIssue[]>;
   onOpen: (draft: Draft) => void;
+  /** Adds packaged files to the sources; answers with the source files they replaced. */
+  onAddToSources: (files: PackagedFile[]) => SourceFile[];
 }
 
 /** Picks drafts, packages them as one APIExamples file per contract, and downloads the package. */
-export function PackagePanel({ designs, drafts, issues, onOpen }: Props) {
+export function PackagePanel({ designs, drafts, issues, onOpen, onAddToSources }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
+  const [added, setAdded] = useState<{ files: PackagedFile[]; replaced: SourceFile[] }>();
 
   const toggle = (ids: string[], checked: boolean) => {
     setProblem(undefined);
     setPreview(undefined);
+    setAdded(undefined);
     setSelected((current) => {
       const next = new Set(current);
       ids.forEach((id) => (checked ? next.add(id) : next.delete(id)));
@@ -96,11 +101,18 @@ export function PackagePanel({ designs, drafts, issues, onOpen }: Props) {
                 </ul>
                 <label className="field">
                   <span className="muted">File name</span>
-                  <input value={fileName} onChange={(e) => setFileNames({ ...fileNames, [id]: e.currentTarget.value })} />
+                  <input
+                    value={fileName}
+                    onChange={(e) => {
+                      setAdded(undefined);
+                      setFileNames({ ...fileNames, [id]: e.currentTarget.value });
+                    }}
+                  />
                 </label>
-                {clash && (
+                {clash && clash.file.origin !== 'package' && (
                   <p className="muted note-inline">
-                    Same name as {clash.file.path}: loaded into Microcks, it replaces that file's examples.
+                    Same name as {clash.file.path}: added to the sources, the package takes its place there; loaded
+                    into Microcks, it replaces that file's examples.
                   </p>
                 )}
               </div>
@@ -133,6 +145,17 @@ export function PackagePanel({ designs, drafts, issues, onOpen }: Props) {
               disabled={count === 0}
               onClick={() => {
                 const files = build();
+                if (files) setAdded({ files, replaced: onAddToSources(files) });
+              }}
+            >
+              Add to sources
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={count === 0}
+              onClick={() => {
+                const files = build();
                 setPreview(preview || !files ? undefined : files.map((f) => `# ${f.fileName}\n${f.content}`).join('\n'));
               }}
             >
@@ -140,6 +163,13 @@ export function PackagePanel({ designs, drafts, issues, onOpen }: Props) {
             </button>
           </div>
           {problem && <p className="error">{problem}</p>}
+          {added && (
+            <p className="added" role="status">
+              Added {added.files.map((f) => f.fileName).join(', ')} to the sources
+              {added.replaced.length > 0 && `, in place of ${added.replaced.map((f) => f.path).join(', ')}`}.{' '}
+              <a href="#">Browse &amp; load</a> to load {added.files.length === 1 ? 'it' : 'them'}.
+            </p>
+          )}
           {preview && (
             <pre className="package-preview">
               <code>{preview}</code>
