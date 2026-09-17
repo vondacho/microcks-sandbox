@@ -9,6 +9,7 @@ import { runPlan, type StepOutcome } from '../lib/runner';
 import { mergeSources } from '../lib/sources';
 import { CatalogTree } from './CatalogTree';
 import { Console } from './Console';
+import { DesignView } from './design/DesignView';
 import { MicrocksStatus } from './MicrocksStatus';
 import { PlanPanel } from './PlanPanel';
 import { SourcePicker } from './SourcePicker';
@@ -32,7 +33,18 @@ function saveApplied(applied: Set<string>) {
   }
 }
 
+type Activity = 'load' | 'design';
+
+const ACTIVITIES: { activity: Activity; label: string; tagline: string }[] = [
+  { activity: 'load', label: 'Browse & load', tagline: 'Pick contracts, examples and metadata, then load them into Microcks or take them out.' },
+  { activity: 'design', label: 'Design', tagline: 'Design examples for a contract, then package them as APIExamples files to export.' },
+];
+
+/** The activity is kept in the URL fragment, so a reload or a shared link lands on the same one. */
+const activityFromHash = (): Activity => (typeof location !== 'undefined' && location.hash === '#design' ? 'design' : 'load');
+
 export default function App() {
+  const [activity, setActivity] = useState<Activity>(activityFromHash);
   const [sources, setSources] = useState<SourceFile[]>([]);
   const [status, setStatus] = useState<Status>();
   const [live, setLive] = useState<LiveState>({ services: [] });
@@ -60,6 +72,12 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const onHash = () => setActivity(activityFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   const toggle = useCallback((leaves: string[], checked: boolean) => {
     setPlan(undefined);
@@ -101,7 +119,14 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Contract Examples Shaper</h1>
-          <p className="muted">Pick contracts, examples and metadata, then load them into Microcks or take them out.</p>
+          <nav className="activities" aria-label="Activities">
+            {ACTIVITIES.map(({ activity: a, label }) => (
+              <a key={a} href={a === 'load' ? '#' : `#${a}`} className={`activity${activity === a ? ' active' : ''}`} aria-current={activity === a ? 'page' : undefined}>
+                {label}
+              </a>
+            ))}
+          </nav>
+          <p className="muted">{ACTIVITIES.find((a) => a.activity === activity)!.tagline}</p>
         </div>
         <MicrocksStatus status={status} liveError={liveError} services={live.services.length} onRefresh={refresh} />
       </header>
@@ -119,6 +144,11 @@ export default function App() {
         }}
       />
 
+      {activity === 'design' ? (
+        <main>
+          <DesignView catalog={catalog} />
+        </main>
+      ) : (
       <main className="workspace">
         <CatalogTree catalog={catalog} live={live} applied={applied} selected={selected} onToggle={toggle} />
         <PlanPanel
@@ -140,6 +170,7 @@ export default function App() {
           }}
         />
       </main>
+      )}
 
       <Console />
     </div>

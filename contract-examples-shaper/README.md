@@ -1,8 +1,12 @@
 # Contract Examples Shaper
 
-A web UI for deciding what a running Microcks mocks. You pick contracts, examples and metadata from a folder or
-from URLs. The shaper groups the examples under the contract they belong to, and you load or unload any part of it:
-a whole contract, one file, or a single example.
+A web UI for shaping what a running Microcks mocks, in two activities:
+
+- **Browse & load.** You pick contracts, examples and metadata from a folder or from URLs. The shaper groups the
+  examples under the contract they belong to, next to what Microcks holds, and you load or unload any part of it: a
+  whole contract, one file, or a single example.
+- **Design.** You design examples for the operations of an OpenAPI contract, checked against its schemas, then
+  package the ones you pick as an APIExamples file per contract and download it.
 
 - Astro 7 (server output, Node adapter) with a React island
 - Artifacts are parsed in the browser; the Astro server only talks to Microcks and fetches URLs
@@ -59,6 +63,36 @@ The commands are `curl` lines meant to be pasted into a shell as they are:
 - No credential is ever written out. With authentication, the token call reads `MICROCKS_CLIENT_ID` and
   `MICROCKS_CLIENT_SECRET` from the environment and exports `MICROCKS_TOKEN` (it needs `jq`); the calls after it send
   `Authorization: Bearer $MICROCKS_TOKEN`. The token is cached, so its call only shows up when a new one is fetched.
+
+## Designing examples
+
+*Design* (or `#design` in the URL) works on the OpenAPI 3.0 and 3.1 contracts of the sources; the sources are shared
+with *Browse & load*.
+
+1. **Pick an operation.** Operations are listed per contract, with how many drafts and how many examples of the
+   sources each has.
+2. **Design.** *+ New example* starts a draft from the contract: required path, query and header parameters, a request
+   body and a response body sampled from the schemas (their `example`, `default` or first `enum` value when they have
+   one), and the first success status. Edit it field by field; *Fill from schema* and *Format* help with bodies.
+   *Duplicate* starts a variant. Drafts are saved in the browser (IndexedDB) as you type, and are there on your next
+   visit.
+3. **Check.** Each field shows what's wrong with it. Only what makes an example unusable is an error and keeps the draft
+   out of a package: no name, a name used twice for the operation, a missing path parameter (Microcks builds the mock's
+   path from it), a status that isn't one, a body that isn't JSON. What the contract's schemas reject is a warning: an
+   example of a `400` is meant to carry a request the contract refuses. So is a name the sources already use for the
+   operation.
+4. **Package and export.** Tick drafts, adjust the file name if needed (default `<name>-<version>-examples.yaml`),
+   *Preview*, then *Download*: one YAML for one contract, a `.zip` of one YAML per contract otherwise.
+
+A package is an [APIExamples](https://microcks.io/documentation/references/examples/) document: a secondary
+artifact that leaves the contract untouched. Path and query parameters go under `request.parameters`, where Microcks
+tells them apart by the `{name}` placeholders of the operation; header parameters go under `request.headers`, with
+`Content-Type` and `Accept` from the media types; JSON bodies are written as YAML structures. Before a package is handed
+out it is read back with the same rules as any source file, and must hold exactly the drafts picked.
+
+Add the downloaded file to the sources, next to its contract, to load it from *Browse & load*: it shows up as a
+companion whose examples are ready to load. A file named like an existing companion replaces that companion's
+examples when loaded; the package panel says so.
 
 ## How loading and unloading work
 
@@ -119,10 +153,11 @@ of them keeps it.
 ## Tests
 
 ```bash
-npm test          # 84 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
-                  # components
+npm test          # 103 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
+                  # design (operations, schema sampling and validation, drafts, packaging, zip, draft stores), components
 npm run test:it   # a real microcks-uber via Testcontainers: load all, unload one example, load it back,
-                  # replay journaled commands with curl, show an example only Microcks holds, delete
+                  # replay journaled commands with curl, show an example only Microcks holds, delete;
+                  # design examples for a contract without any, package, load, and call the mocks
 ```
 
 The unit tests use `openapi-including-examples.json` and `petshop-behavior-collection.json` from the Pet Shop, copied into
@@ -147,8 +182,11 @@ src/lib/view.ts      sources + live state → the merged tree, its states, count
 src/lib/runner.ts    runs steps against a MicrocksPort (the API routes in the browser, the client in tests)
 src/lib/api.ts       the browser's calls to the API routes
 src/lib/sources.ts   reading picked files, naming URLs
+src/lib/design/      operations (what an OpenAPI operation declares), schema (samples, validation), draft (model,
+                     issues), package (APIExamples), export (file or zip), store (IndexedDB, memory)
 src/pages/api/       microcks/{status,services,services/[id],artifacts}, sources/fetch, journal
-src/components/      App, SourcePicker, MicrocksStatus, CatalogTree, PlanPanel, Console
+src/components/      App, SourcePicker, MicrocksStatus, CatalogTree, PlanPanel, Console, Check
+src/components/design/  DesignView, DraftEditor, PackagePanel, useDrafts
 test/unit/           vitest, no container
 test/it/             vitest + @microcks/microcks-testcontainers
 ```

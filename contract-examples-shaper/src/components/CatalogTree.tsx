@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Catalog } from '../lib/artifacts/catalog';
 import type { ArtifactKind, ParsedArtifact } from '../lib/artifacts/types';
 import { liveServiceId, type LiveState } from '../lib/microcks/live-state';
 import { fileLeaf } from '../lib/plan';
+import { Check } from './Check';
 import { buildView, filterService, inTab, leavesOf, type FileItem, type ItemState, type ServiceItem, type Tab } from '../lib/view';
 
 interface Props {
@@ -49,17 +50,6 @@ const EMPTY_TAB: Record<Tab, string> = {
 function roleLabel(a: ParsedArtifact): string {
   if (a.role === 'primary') return 'contract';
   return a.kind === 'apimetadata' ? 'metadata' : 'companion';
-}
-
-function Check({ leaves, selected, onToggle, label }: { leaves: string[]; selected: ReadonlySet<string>; onToggle: Props['onToggle']; label: string }) {
-  const ref = useRef<HTMLInputElement>(null);
-  const count = leaves.filter((leaf) => selected.has(leaf)).length;
-  const checked = leaves.length > 0 && count === leaves.length;
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = count > 0 && !checked;
-  }, [count, checked]);
-  if (leaves.length === 0) return <span className="check-placeholder" aria-hidden="true" />;
-  return <input ref={ref} type="checkbox" aria-label={label} checked={checked} onChange={() => onToggle(leaves, !checked)} />;
 }
 
 function StateBadge({ state, children }: { state: ItemState; children?: React.ReactNode }) {
