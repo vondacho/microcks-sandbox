@@ -1,0 +1,1 @@
+[{"id":1,"name":"Rex","category":"DOG","status":"AVAILABLE","price":450.0},{"id":2,"name":"Whiskers","category":"CAT","status":"AVAILABLE","price":220.0},{"id":3,"name":"Nemo","category":"FISH","status":"PENDING","price":35.5},{"id":4,"name":"Kiwi","category":"BIRD","status":"SOLD","price":120.0}]

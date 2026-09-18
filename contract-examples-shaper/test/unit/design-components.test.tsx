@@ -55,3 +55,4 @@ describe('PackagePanel', () => {
     expect(html).toContain('0 examples in 0 files Download Add to sources Preview');
   });
 });
+

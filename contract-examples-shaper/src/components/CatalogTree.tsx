@@ -94,6 +94,7 @@ function FileRow({ file, selected, onToggle }: { file: FileItem } & Pick<Props, 
       <span className="muted">
         {a ? `${KIND_LABELS[a.kind]} · ${roleLabel(a)}${file.leaf && a.kind !== 'apimetadata' ? ' · whole file' : ''}` : 'not in the sources'}
         {a?.file.origin === 'package' && ' · designed here'}
+        {a?.file.origin === 'generated' && ' · built from body files'}
         {file.main && ' · service imported from it'}
       </span>
       {fileBadge(file)}

@@ -14,10 +14,10 @@ export function SourcePicker({ count, onAdd, onClear }: Props) {
   const [busy, setBusy] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
 
-  const pick = async (list: FileList | null) => {
+  const pick = async (list: FileList | null, folder: boolean) => {
     if (!list) return;
     setBusy(true);
-    const { files, skipped } = await readPickedFiles(Array.from(list));
+    const { files, skipped } = await readPickedFiles(Array.from(list), { folder });
     setProblems(skipped);
     onAdd(files);
     setBusy(false);
@@ -42,16 +42,19 @@ export function SourcePicker({ count, onAdd, onClear }: Props) {
     <section className="panel sources" aria-label="Sources">
       <div className="source">
         <h2>From a folder</h2>
-        <p className="muted">Files are read in your browser. Subfolders are included; build output and dot-folders are not.</p>
+        <p className="muted">
+          Read in your browser: the YAML and JSON files of the folder and its subfolders, skipping build output and
+          dot-folders.
+        </p>
         <div className="row">
           <label className="button">
             Choose folder…
             {/* @ts-expect-error webkitdirectory is not in React's input attributes */}
-            <input type="file" webkitdirectory="" multiple hidden onChange={(e) => pick(e.currentTarget.files)} />
+            <input type="file" webkitdirectory="" multiple hidden onChange={(e) => pick(e.currentTarget.files, true)} />
           </label>
           <label className="button secondary">
             Choose files…
-            <input type="file" multiple hidden onChange={(e) => pick(e.currentTarget.files)} />
+            <input type="file" multiple hidden onChange={(e) => pick(e.currentTarget.files, false)} />
           </label>
         </div>
       </div>

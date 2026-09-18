@@ -1,0 +1,133 @@
+apiVersion: mocks.microcks.io/v1alpha1
+kind: APIExamples
+metadata:
+  name: Pet Shop API
+  version: v1
+operations:
+  POST /pets:
+    invalid_pet:
+      request:
+        headers:
+          Content-Type: application/json
+          Accept: application/json
+        body: "{\"name\":\"\",\"category\":\"DOG\",\"status\":\"AVAILABLE\",\"price\"\
+          :-1}"
+      response:
+        status: 400
+        mediaType: application/json
+        body: "{\"timestamp\":\"2026-09-05T07:27:27.011Z\",\"status\":400,\"error\"\
+          :\"Bad Request\",\"path\":\"/pets\"}"
+    new_pet_bella:
+      request:
+        headers:
+          Content-Type: application/json
+          Accept: application/json
+        body: "{\"name\":\"Bella\",\"category\":\"DOG\",\"status\":\"AVAILABLE\",\"\
+          price\":399.99}"
+      response:
+        headers:
+          Location: /pets/5
+        status: 201
+        mediaType: application/json
+        body: "{\"id\":5,\"name\":\"Bella\",\"category\":\"DOG\",\"status\":\"AVAILABLE\"\
+          ,\"price\":399.99}"
+  GET /pets:
+    all_pets:
+      request:
+        headers:
+          Accept: application/json
+      response:
+        status: 200
+        mediaType: application/json
+        body: "[{\"id\":1,\"name\":\"Rex\",\"category\":\"DOG\",\"status\":\"AVAILABLE\"\
+          ,\"price\":450.0},{\"id\":2,\"name\":\"Whiskers\",\"category\":\"CAT\",\"\
+          status\":\"AVAILABLE\",\"price\":220.0},{\"id\":3,\"name\":\"Nemo\",\"category\"\
+          :\"FISH\",\"status\":\"PENDING\",\"price\":35.5},{\"id\":4,\"name\":\"Kiwi\"\
+          ,\"category\":\"BIRD\",\"status\":\"SOLD\",\"price\":120.0}]"
+    available_pets:
+      request:
+        headers:
+          Accept: application/json
+        parameters:
+          status: AVAILABLE
+      response:
+        status: 200
+        mediaType: application/json
+        body: "[{\"id\":1,\"name\":\"Rex\",\"category\":\"DOG\",\"status\":\"AVAILABLE\"\
+          ,\"price\":450.0},{\"id\":2,\"name\":\"Whiskers\",\"category\":\"CAT\",\"\
+          status\":\"AVAILABLE\",\"price\":220.0}]"
+    sold_pets:
+      request:
+        headers:
+          Accept: application/json
+        parameters:
+          status: SOLD
+      response:
+        status: 200
+        mediaType: application/json
+        body: "[{\"id\":4,\"name\":\"Kiwi\",\"category\":\"BIRD\",\"status\":\"SOLD\"\
+          ,\"price\":120.0}]"
+  GET /pets/{id}:
+    unknown_pet:
+      request:
+        headers:
+          Accept: application/problem+json
+        parameters:
+          id: 999
+      response:
+        status: 404
+        mediaType: application/problem+json
+        body: "{\"detail\":\"Pet 999 does not exist\",\"instance\":\"/pets/999\"\
+          ,\"status\":404,\"title\":\"Pet not found\"}"
+    rex:
+      request:
+        headers:
+          Accept: application/json
+        parameters:
+          id: 1
+      response:
+        status: 200
+        mediaType: application/json
+        body: "{\"id\":1,\"name\":\"Rex\",\"category\":\"DOG\",\"status\":\"AVAILABLE\"\
+          ,\"price\":450.0}"
+  PUT /pets/{id}:
+    unknown_pet:
+      request:
+        headers:
+          Content-Type: application/json
+          Accept: application/problem+json
+        parameters:
+          id: 999
+        body: "{\"name\":\"Bella\",\"category\":\"DOG\",\"status\":\"SOLD\",\"price\"\
+          :420.0}"
+      response:
+        status: 404
+        mediaType: application/problem+json
+        body: "{\"detail\":\"Pet 999 does not exist\",\"instance\":\"/pets/999\"\
+          ,\"status\":404,\"title\":\"Pet not found\"}"
+    sell_bella:
+      request:
+        headers:
+          Accept: application/json
+          Content-Type: application/json
+        parameters:
+          id: 5
+        body: "{\"name\":\"Bella\",\"category\":\"DOG\",\"status\":\"SOLD\",\"price\"\
+          :420.0}"
+      response:
+        status: 200
+        mediaType: application/json
+        body: "{\"id\":5,\"name\":\"Bella\",\"category\":\"DOG\",\"status\":\"SOLD\"\
+          ,\"price\":420.0}"
+  DELETE /pets/{id}:
+    unknown_pet:
+      request:
+        headers:
+          Accept: application/problem+json
+        parameters:
+          id: 999
+      response:
+        status: 404
+        mediaType: application/problem+json
+        body: "{\"detail\":\"Pet 999 does not exist\",\"instance\":\"/pets/999\"\
+          ,\"status\":404,\"title\":\"Pet not found\"}"

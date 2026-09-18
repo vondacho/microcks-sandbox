@@ -14,6 +14,8 @@ export interface KindHandler {
   examples(doc: Json): ExampleRef[] | undefined;
   /** Mutates `doc`. Only called for kinds whose `examples` returned a list. */
   filter?(doc: Json, keep: Keep): void;
+  /** The operations the file declares, examples or not, for kinds that spell them out. */
+  operationNames?(doc: Json): string[];
 }
 
 const infoIdentity = (doc: Json): ServiceRef | undefined => {
@@ -91,8 +93,11 @@ function openApiExampleMaps(doc: Json, operation: JsonObject, materialize: boole
   return maps;
 }
 
+const openApiOperationNames = (doc: Json): string[] => openApiOperations(doc).map((op) => op.name);
+
 const openApi: KindHandler = {
   identity: infoIdentity,
+  operationNames: openApiOperationNames,
   examples(doc) {
     const refs: ExampleRef[] = [];
     for (const op of openApiOperations(doc)) {
@@ -349,7 +354,7 @@ export const handlers: Record<ArtifactKind, KindHandler> = {
   'postman-workspace': postman('postman-workspace'),
   apiexamples: apiExamples,
   apimetadata: noExamples(metadataIdentity),
-  swagger: wholeFile(infoIdentity),
+  swagger: { ...wholeFile(infoIdentity), operationNames: openApiOperationNames },
   graphql: wholeFile((_, content) => microcksIdIdentity(content)),
   har: wholeFile((doc) => {
     const log = isObject(doc) ? doc.log : undefined;

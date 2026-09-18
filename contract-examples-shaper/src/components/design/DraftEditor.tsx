@@ -114,6 +114,7 @@ export function DraftEditor({ design, op, draft, issues, onChange }: Props) {
 
       <fieldset>
         <legend>Request</legend>
+        <Issues issues={issues} field="request" />
         {op.parameters.filter((p) => p.in !== 'cookie').length > 0 && (
           <table className="parameters">
             <thead>

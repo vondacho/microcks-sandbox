@@ -42,6 +42,7 @@ export function parseArtifact(file: SourceFile): ParsedArtifact | undefined {
     format,
     service,
     examples: examples ?? [],
+    operations: handler.operationNames?.(doc) ?? [],
     granular: examples !== undefined && handler.filter !== undefined,
     warnings,
   };

@@ -138,10 +138,20 @@ export function draftIssues(draft: Draft, op: DesignOperation | undefined, ctx: 
   const error = (field: string, message: string) => issues.push({ severity: 'error', field, message });
   const warn = (field: string, message: string) => issues.push({ severity: 'warning', field, message });
 
+  const sameRequest = (a: Draft, b: Draft) =>
+    JSON.stringify([a.request.parameters, a.request.headers, a.request.body ?? '']) ===
+    JSON.stringify([b.request.parameters, b.request.headers, b.request.body ?? '']);
+
   const name = draft.name.trim();
   if (!name) error('name', 'An example needs a name.');
   else if (ctx.siblings.some((d) => d.id !== draft.id && d.name.trim() === name)) error('name', `Another draft of ${draft.operation} is named ${name}.`);
   else if (ctx.existing.includes(name)) warn('name', `The sources already hold an example ${name} for this operation: Microcks would serve two with that name.`);
+
+  const twin = ctx.siblings.find((d) => d.id !== draft.id && sameRequest(d, draft));
+  if (twin) {
+    // Microcks picks a response by the request: two examples asking the same thing leave one of them unreachable.
+    warn('request', `${twin.name || 'Another draft'} asks exactly the same as this one: Microcks would serve only one of them.`);
+  }
 
   if (!op) {
     error('operation', `The contract has no operation ${draft.operation} any more.`);

@@ -32,9 +32,10 @@ Microcks advertises is only reachable from inside its own network, override it w
 
 ## Using it
 
-1. **Sources.** Choose a folder (read in the browser; build output and dot-folders are skipped), individual files,
-   or paste raw file URLs (fetched by the server, since most hosts refuse cross-origin reads). Sources add up; picking
-   a file again replaces it.
+1. **Sources.** Choose a folder — its **YAML and JSON** files, subfolders included, read in your browser, skipping
+   build output and dot-folders. Or pick files by hand, which keeps every format Microcks reads (`.graphql`, `.proto`,
+   `.xml`, `.har`, `.txt` too). Or paste raw file URLs, fetched by the server since most hosts refuse cross-origin
+   reads. Sources add up; picking a file again replaces it.
 2. **Contracts.** One tree for the sources and Microcks together: each service (`name:version`) appears once, whether
    the sources define it, Microcks holds it, or both. Under it, *Files* lists the contract, its companions (APIExamples,
    Postman collections, extra contracts), its metadata, and any artifact Microcks imported that the sources lack.
@@ -43,6 +44,9 @@ Microcks advertises is only reachable from inside its own network, override it w
    - **loaded**: in the sources and in Microcks, imported from that very file;
    - **ready to load**: in the sources, not (yet) in Microcks;
    - **only in Microcks**: imported from a file the sources don't hold, or no longer in the file that was imported.
+
+   A file the sources hold that Microcks cannot read, but whose path says what it answers, joins its contract as a
+   companion built by the shaper (see *Response bodies in a folder* below), marked *built from body files*.
 
    *Preview* on an example shows it as an exchange: the request line, headers and body, then the response status,
    headers and body (or the message of an event), with the example's summary. An example ready to load is read from
@@ -79,7 +83,8 @@ with *Browse & load*.
 2. **Design.** *+ New example* starts a draft from the contract: required path, query and header parameters, a request
    body and a response body sampled from the schemas (their `example`, `default` or first `enum` value when they have
    one), and the first success status. Edit it field by field; *Fill from schema* and *Format* help with bodies.
-   *Duplicate* starts a variant. *Preview* shows the draft as the exchange it describes and as the APIExamples it
+   *Duplicate* starts a variant. A draft asking exactly what another draft of the same operation asks is flagged,
+   since Microcks would then serve only one of them. *Preview* shows the draft as the exchange it describes and as the APIExamples it
    packages into; the examples the sources already hold for the operation can be previewed too. Drafts are saved in the browser (IndexedDB) as you type, and are there on your next
    visit.
 3. **Check.** Each field shows what's wrong with it. Only what makes an example unusable is an error and keeps the draft
@@ -103,6 +108,29 @@ out it is read back with the same rules as any source file, and must hold exactl
 A package named like a companion of the contract replaces that companion's examples when loaded into Microcks; the
 package panel says so. Examples of packages added to the sources don't count as clashing with the drafts they were
 made from.
+
+## Response bodies in a folder
+
+A folder may hold one example's response body per file, with the path saying what it answers:
+
+```
+v1/pets/GET_200_all-pets.json        → GET /pets, 200, example all-pets
+v1/pets/999/GET_404_unknown-pet.json → GET /pets/{id} with id 999, 404, example unknown-pet
+```
+
+- The first folder is the **API version**, matched against the contract's version (`v1`, or `1`). Whatever sits above
+  it is where the tree happens to live, the picked folder's own name included.
+- The folders under it are the **URI as called**, matched against the contract's paths: `/pets/999` calls
+  `GET /pets/{id}` and gives `id` the value `999`, which is what Microcks dispatches on.
+- The name is `GET_<status code>_<example name>.json`. Only `GET` is read: nothing in such a file says what another
+  method's request would carry. The example's name is whatever follows the status code.
+
+The shaper turns them into one APIExamples artifact per contract, named `<service>-<version>-body-files.yaml`, and
+from there it is a companion like any other: its examples show under their operation, preview as exchanges, and load
+or unload one by one. Nothing goes through the design activity. The artifact says what it was built from, and what it
+left out: a URI no `GET` of the contract answers, or a version naming no contract (those files stay in the list of
+files Microcks would not recognize). Several bodies of one URI are flagged too — they all answer the same call, so
+Microcks serves one of them.
 
 ## How loading and unloading work
 
@@ -163,13 +191,15 @@ of them keeps it.
 ## Tests
 
 ```bash
-npm test          # 117 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
+npm test          # 133 unit tests: detection, extraction, filtering, catalog, plan, view, client, journal, commands,
                   # design (operations, schema sampling and validation, drafts, packaging, zip, draft stores),
-                  # previews (OpenAPI, APIExamples, AsyncAPI, Postman, drafts, Microcks), components
+                  # previews (OpenAPI, APIExamples, AsyncAPI, Postman, drafts, Microcks), response-body folders,
+                  # source picking, components
 npm run test:it   # a real microcks-uber via Testcontainers: load all, unload one example, load it back,
                   # preview what Microcks serves against the file, replay journaled commands with curl, show an
                   # example only Microcks holds, delete;
-                  # design examples for a contract without any, package, load, and call the mocks
+                  # design examples for a contract without any, package, load, and call the mocks;
+                  # load a folder of response bodies, call the mocks, unload one of them
 ```
 
 The unit tests use `openapi-including-examples.json` and `petshop-behavior-collection.json` from the Pet Shop, copied into
@@ -195,6 +225,7 @@ src/lib/preview.ts   an example as an exchange, read from a source file, a draft
 src/lib/runner.ts    runs steps against a MicrocksPort (the API routes in the browser, the client in tests)
 src/lib/api.ts       the browser's calls to the API routes
 src/lib/sources.ts   reading picked files, naming URLs
+src/lib/artifacts/body-files.ts  a folder of response bodies → an APIExamples artifact
 src/lib/design/      operations (what an OpenAPI operation declares), schema (samples, validation), draft (model,
                      issues), package (APIExamples), export (file or zip), store (IndexedDB, memory)
 src/pages/api/       microcks/{status,services,services/[id],services/[id]/exchange,artifacts}, sources/fetch, journal

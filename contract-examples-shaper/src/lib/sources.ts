@@ -2,7 +2,11 @@ import type { SourceFile } from './artifacts/types';
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-const ARTIFACT_EXTENSIONS = /\.(json|ya?ml|graphql|gql|proto|xml|har)$/i;
+/** A picked folder is walked whole, so it is read narrowly: the formats a contract and its examples use. */
+const FOLDER_EXTENSIONS = /\.(ya?ml|json)$/i;
+
+/** A file picked by hand is taken at its word, so the other kinds Microcks reads are welcome too. */
+const FILE_EXTENSIONS = /\.(ya?ml|json|graphql|gql|proto|xml|har)$/i;
 const SKIPPED_DIRECTORIES = /(^|\/)(node_modules|target|dist|build)\/|(^|\/)\.[^/]+\//;
 
 /** The artifact name for a URL: its last path segment, as a file picked from a folder would be named. */
@@ -11,13 +15,17 @@ export function nameOfUrl(url: URL): string {
   return segment ? decodeURIComponent(segment) : url.hostname;
 }
 
-/** Reads the files of a picked folder that could be artifacts; build output and dot-directories are skipped. */
-export async function readPickedFiles(files: Iterable<File>): Promise<{ files: SourceFile[]; skipped: string[] }> {
+/**
+ * Reads picked files. A whole folder keeps its YAML and JSON files, skipping build output and dot-directories;
+ * files picked by hand keep every format Microcks reads.
+ */
+export async function readPickedFiles(files: Iterable<File>, { folder = true } = {}): Promise<{ files: SourceFile[]; skipped: string[] }> {
   const result: SourceFile[] = [];
   const skipped: string[] = [];
+  const extensions = folder ? FOLDER_EXTENSIONS : FILE_EXTENSIONS;
   for (const file of files) {
     const path = file.webkitRelativePath || file.name;
-    if (!ARTIFACT_EXTENSIONS.test(file.name) || SKIPPED_DIRECTORIES.test(path)) continue;
+    if (!extensions.test(file.name) || SKIPPED_DIRECTORIES.test(path)) continue;
     if (file.size > MAX_FILE_BYTES) {
       skipped.push(`${path}: larger than 5 MB`);
       continue;

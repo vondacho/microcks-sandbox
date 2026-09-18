@@ -5,8 +5,8 @@ export interface SourceFile {
   /** The artifact name Microcks will know it by: the multipart filename of the upload. */
   name: string;
   content: string;
-  /** `package`: packaged from drafts in the design activity. */
-  origin: 'folder' | 'url' | 'package';
+  /** `package`: packaged from drafts in the design activity. `generated`: built by the shaper, from body files. */
+  origin: 'folder' | 'url' | 'package' | 'generated';
 }
 
 /** What Microcks' MockRepositoryImporterFactory would take the file for. */
@@ -48,6 +48,8 @@ export interface ParsedArtifact {
   service?: ServiceRef;
   /** Examples found in the file, in document order. */
   examples: ExampleRef[];
+  /** The operations the file declares, for a contract that spells them out; empty otherwise. */
+  operations: string[];
   /** Whether a subset of `examples` can be written back out; otherwise the file loads as a whole. */
   granular: boolean;
   warnings: string[];
